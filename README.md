@@ -40,4 +40,10 @@ Test-driven. Every server module, hook, and pure utility lands with its tests. U
 
 ## Node version
 
-Built against Node 25 / npm 11. If your `node --version` is older than 18, install a newer one (`brew install node` or via nvm/fnm).
+Built against Node 25.9.0 / npm 11. There's a `.nvmrc` at the project root — `nvm use` switches to the right version.
+
+If `node --version` doesn't match: nvm is sourced from `~/.zshrc`, which only runs in interactive shells. For non-interactive contexts (scripts, agents, CI), pin the version into PATH from `~/.zshenv` instead, e.g.:
+
+```sh
+export PATH="$HOME/.nvm/versions/node/v25.9.0/bin:$PATH"
+```

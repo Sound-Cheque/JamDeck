@@ -57,11 +57,14 @@ Spec §"Phase 1 — Core Shell"
 - [ ] WebSocket server: connection lifecycle, `client:join` / `client:leave` broadcasts, message routing skeleton. **Tests first** using `ws` client in-process.
 - [ ] Deck schema validation (zod or hand-rolled). **Tests first.**
 
-### Client
-- [ ] 3-panel layout (`TopBar`, `DeckPanel`, `SlidePanel`, main area placeholder). Component tests for layout presence + responsive collapse rules.
-- [ ] `useWebSocket` hook: connect, auto-reconnect, message dispatch. **Tests first** with mock WS.
-- [ ] Deck panel: list, create, delete, favorite (favorites pinned to top, then alpha). Tests for sort order + interactions.
-- [ ] Per-deck settings modal (cog at top of slide panel): timing mode, timer style, countdown, slide strip toggle. Tests for form state + save.
+### Client (next up)
+> Strategy: wire the UI to the **REST endpoints first** so we have something usable in the browser. Add WebSocket broadcasts later, once there's a second client to sync to. The WS skeleton task moves to its own bullet below.
+
+- [ ] `useDecks` hook — fetch list, create, delete, toggle-favorite via `/api/decks`. Tests with `msw` or a fetch mock.
+- [ ] 3-panel layout fleshed out (`TopBar`, `DeckPanel`, `SlidePanel`, main area placeholder). Component tests for layout presence.
+- [ ] Deck panel UI: list, create, delete, favorite (favorites pinned to top, then alpha). Tests for sort order + interactions.
+- [ ] Per-deck settings modal (cog at top of slide panel): timing mode, timer style, countdown, slide strip toggle. Tests for form state + save (uses `PATCH /api/decks/:id`).
+- [ ] **WS skeleton** — `useWebSocket` hook (connect, auto-reconnect, message dispatch) + server-side connection lifecycle. Wired up here once we know what events we'll broadcast. **Tests first** with mock WS / in-process `ws` client.
 
 **Exit criteria:** Create a deck, see it in the list, favorite it, edit its settings, refresh the page, state persists.
 
@@ -161,6 +164,7 @@ Each decision will be made when we get to that phase, recorded here, and rationa
 > Append-only notes as we execute. Date entries.
 
 - _2026-05-04_ — Plan created from spec. TDD approach defined. Awaiting kickoff on Phase 0.
+- _2026-05-04_ — Decided next step: wire client UI to REST first, defer WebSocket skeleton until we have events worth broadcasting. Set up `.nvmrc` + `~/.zshenv` PATH so nvm's Node 25.9.0 is canonical for all shells (incl. non-interactive Claude tool calls) — no more per-command PATH prefixes.
 - _2026-05-04_ — REST router landed TDD-style. `decks.routes.js` mounted at `/api/decks`. 14 tests. `createServer` now takes `{ deckStore }`; production builds one from `data/decks/`. Smoke-tested live: create → list → delete round-trips through the live HTTP server.
 - _2026-05-04_ — Phase 1 (server) started: `decks.js` deck store landed TDD-style. 26 tests. Settled two decisions inline: (1) `listDecks` returns summaries not full decks; (2) writes serialize per-deck via an in-process promise queue + atomic temp-file rename — last-write-wins emerges from arrival order, file is never partially written.
 - _2026-05-04_ — Phase 0 complete. Workspace layout: npm workspaces. Server (Express 5 + ws) and client (Vite + React 18) scaffolded with vitest smoke tests both green. `npm run dev` brings both up; client proxies to server. Discovered `/usr/local/bin/node` is a stale 2015 v0.10 install shadowing Homebrew's Node 25 in `$PATH` — worked around by prepending `/opt/homebrew/bin` per command; user should clean up at their leisure.
