@@ -135,6 +135,100 @@ describe('useDeck', () => {
     expect(patchCall[1].headers['Content-Type']).toBe('application/json');
   });
 
+  it('addSlide() POSTs and updates the local deck', async () => {
+    const deck = fullDeck({ id: 'a', slides: [] });
+    fetchMock.mockResolvedValueOnce(jsonResponse(deck));
+    const withSlide = {
+      ...deck,
+      slides: [{ id: 's1', type: 'canvas', duration: { unit: 'seconds', value: 30 }, content: { objects: [], background: '#ffffff' } }],
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(withSlide, { status: 201 }));
+
+    const { result } = renderHook(() => useDeck('a'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let returned;
+    await act(async () => {
+      returned = await result.current.addSlide();
+    });
+
+    expect(returned).toEqual(withSlide);
+    expect(result.current.deck).toEqual(withSlide);
+
+    const [, postCall] = fetchMock.mock.calls;
+    expect(postCall[0]).toBe('/api/decks/a/slides');
+    expect(postCall[1].method).toBe('POST');
+  });
+
+  it('updateSlide() PATCHes the slide endpoint and updates local state', async () => {
+    const deck = fullDeck({
+      id: 'a',
+      slides: [{ id: 's1', type: 'canvas', duration: { unit: 'seconds', value: 30 }, content: { objects: [], background: '#ffffff' } }],
+    });
+    fetchMock.mockResolvedValueOnce(jsonResponse(deck));
+    const updated = { ...deck, slides: [{ ...deck.slides[0], duration: { unit: 'seconds', value: 60 } }] };
+    fetchMock.mockResolvedValueOnce(jsonResponse(updated));
+
+    const { result } = renderHook(() => useDeck('a'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.updateSlide('s1', { duration: { unit: 'seconds', value: 60 } });
+    });
+
+    expect(result.current.deck.slides[0].duration.value).toBe(60);
+
+    const [, patchCall] = fetchMock.mock.calls;
+    expect(patchCall[0]).toBe('/api/decks/a/slides/s1');
+    expect(patchCall[1].method).toBe('PATCH');
+    expect(JSON.parse(patchCall[1].body)).toEqual({ duration: { unit: 'seconds', value: 60 } });
+  });
+
+  it('deleteSlide() DELETEs and updates local state', async () => {
+    const deck = fullDeck({
+      id: 'a',
+      slides: [{ id: 's1', type: 'canvas', duration: { unit: 'seconds', value: 30 }, content: {} }],
+    });
+    fetchMock.mockResolvedValueOnce(jsonResponse(deck));
+    const after = { ...deck, slides: [] };
+    fetchMock.mockResolvedValueOnce(jsonResponse(after));
+
+    const { result } = renderHook(() => useDeck('a'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.deleteSlide('s1');
+    });
+
+    expect(result.current.deck.slides).toEqual([]);
+
+    const [, deleteCall] = fetchMock.mock.calls;
+    expect(deleteCall[0]).toBe('/api/decks/a/slides/s1');
+    expect(deleteCall[1].method).toBe('DELETE');
+  });
+
+  it('reorderSlides() PUTs the order array and updates local state', async () => {
+    const slide = (id) => ({ id, type: 'canvas', duration: { unit: 'seconds', value: 30 }, content: {} });
+    const deck = fullDeck({ id: 'a', slides: [slide('s1'), slide('s2'), slide('s3')] });
+    fetchMock.mockResolvedValueOnce(jsonResponse(deck));
+    const reordered = { ...deck, slides: [slide('s3'), slide('s1'), slide('s2')] };
+    fetchMock.mockResolvedValueOnce(jsonResponse(reordered));
+
+    const { result } = renderHook(() => useDeck('a'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.reorderSlides(['s3', 's1', 's2']);
+    });
+
+    expect(result.current.deck.slides.map((s) => s.id)).toEqual(['s3', 's1', 's2']);
+
+    const [, putCall] = fetchMock.mock.calls;
+    expect(putCall[0]).toBe('/api/decks/a/slides/order');
+    expect(putCall[1].method).toBe('PUT');
+    expect(JSON.parse(putCall[1].body)).toEqual({ order: ['s3', 's1', 's2'] });
+  });
+
   it('refresh() re-fetches the same id', async () => {
     const deckV1 = fullDeck({ id: 'a', name: 'v1' });
     const deckV2 = fullDeck({ id: 'a', name: 'v2' });

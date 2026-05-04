@@ -31,9 +31,22 @@ function renderPanel(props = {}) {
       deck={props.deck ?? null}
       loading={props.loading ?? false}
       error={props.error ?? null}
+      selectedSlideId={props.selectedSlideId ?? null}
       onUpdate={props.onUpdate ?? vi.fn()}
+      onAddSlide={props.onAddSlide ?? vi.fn()}
+      onDeleteSlide={props.onDeleteSlide ?? vi.fn()}
+      onSelectSlide={props.onSelectSlide ?? vi.fn()}
     />,
   );
+}
+
+function slide(overrides = {}) {
+  return {
+    id: overrides.id ?? 's1',
+    type: overrides.type ?? 'canvas',
+    duration: overrides.duration ?? { unit: 'seconds', value: 30 },
+    content: overrides.content ?? { objects: [], background: '#ffffff' },
+  };
 }
 
 describe('SlidePanel', () => {
@@ -92,5 +105,72 @@ describe('SlidePanel', () => {
   it('renders a slide-list placeholder when a deck has no slides', () => {
     renderPanel({ deck: deck({ slides: [] }) });
     expect(screen.getByText(/no slides yet/i)).toBeInTheDocument();
+  });
+
+  it('always shows an Add Slide button when a deck is loaded', () => {
+    renderPanel({ deck: deck({ slides: [] }) });
+    expect(screen.getByRole('button', { name: /add slide/i })).toBeInTheDocument();
+  });
+
+  it('does not show Add Slide when no deck is loaded', () => {
+    renderPanel();
+    expect(screen.queryByRole('button', { name: /add slide/i })).not.toBeInTheDocument();
+  });
+
+  it('clicking Add Slide calls onAddSlide', async () => {
+    const user = userEvent.setup();
+    const onAddSlide = vi.fn().mockResolvedValue();
+    renderPanel({ deck: deck({ slides: [] }), onAddSlide });
+
+    await user.click(screen.getByRole('button', { name: /add slide/i }));
+    expect(onAddSlide).toHaveBeenCalledTimes(1);
+  });
+
+  describe('with slides', () => {
+    const slides = [slide({ id: 's1' }), slide({ id: 's2' }), slide({ id: 's3' })];
+
+    it('renders one selectable row per slide', () => {
+      renderPanel({ deck: deck({ slides }) });
+      expect(screen.getByRole('button', { name: /select slide 1/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /select slide 2/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /select slide 3/i })).toBeInTheDocument();
+    });
+
+    it('marks the selected slide with aria-current', () => {
+      renderPanel({ deck: deck({ slides }), selectedSlideId: 's2' });
+      expect(screen.getByRole('button', { name: /select slide 2/i })).toHaveAttribute(
+        'aria-current',
+        'true',
+      );
+      expect(screen.getByRole('button', { name: /select slide 1/i })).not.toHaveAttribute(
+        'aria-current',
+        'true',
+      );
+    });
+
+    it('clicking a slide row calls onSelectSlide with its id', async () => {
+      const user = userEvent.setup();
+      const onSelectSlide = vi.fn();
+      renderPanel({ deck: deck({ slides }), onSelectSlide });
+      await user.click(screen.getByRole('button', { name: /select slide 2/i }));
+      expect(onSelectSlide).toHaveBeenCalledWith('s2');
+    });
+
+    it('clicking delete on a row calls onDeleteSlide and not onSelectSlide', async () => {
+      const user = userEvent.setup();
+      const onDeleteSlide = vi.fn().mockResolvedValue();
+      const onSelectSlide = vi.fn();
+      renderPanel({ deck: deck({ slides }), onDeleteSlide, onSelectSlide });
+
+      await user.click(screen.getByRole('button', { name: /delete slide 2/i }));
+
+      expect(onDeleteSlide).toHaveBeenCalledWith('s2');
+      expect(onSelectSlide).not.toHaveBeenCalled();
+    });
+
+    it('does not show the empty-state placeholder when slides exist', () => {
+      renderPanel({ deck: deck({ slides }) });
+      expect(screen.queryByText(/no slides yet/i)).not.toBeInTheDocument();
+    });
   });
 });

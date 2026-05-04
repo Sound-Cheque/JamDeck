@@ -71,5 +71,75 @@ export function useDeck(id) {
     [id],
   );
 
-  return { deck, loading, error, refresh, update };
+  const addSlide = useCallback(
+    async (partial = {}) => {
+      if (!id) throw new Error('No deck loaded');
+      const res = await fetch(`/api/decks/${id}/slides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partial),
+      });
+      await ensureOk(res, 'add slide');
+      const updated = await readJson(res);
+      setDeck(updated);
+      return updated;
+    },
+    [id],
+  );
+
+  const updateSlide = useCallback(
+    async (slideId, patch) => {
+      if (!id) throw new Error('No deck loaded');
+      const res = await fetch(`/api/decks/${id}/slides/${slideId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      await ensureOk(res, 'update slide');
+      const updated = await readJson(res);
+      setDeck(updated);
+      return updated;
+    },
+    [id],
+  );
+
+  const deleteSlide = useCallback(
+    async (slideId) => {
+      if (!id) throw new Error('No deck loaded');
+      const res = await fetch(`/api/decks/${id}/slides/${slideId}`, { method: 'DELETE' });
+      await ensureOk(res, 'delete slide');
+      const updated = await readJson(res);
+      setDeck(updated);
+      return updated;
+    },
+    [id],
+  );
+
+  const reorderSlides = useCallback(
+    async (orderedIds) => {
+      if (!id) throw new Error('No deck loaded');
+      const res = await fetch(`/api/decks/${id}/slides/order`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: orderedIds }),
+      });
+      await ensureOk(res, 'reorder slides');
+      const updated = await readJson(res);
+      setDeck(updated);
+      return updated;
+    },
+    [id],
+  );
+
+  return {
+    deck,
+    loading,
+    error,
+    refresh,
+    update,
+    addSlide,
+    updateSlide,
+    deleteSlide,
+    reorderSlides,
+  };
 }
