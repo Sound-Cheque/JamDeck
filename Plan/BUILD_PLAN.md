@@ -75,7 +75,7 @@ Spec §"Phase 1 — Core Shell"
 
 Spec §"Phase 2 — Slides & Canvas"
 
-- [ ] Slide CRUD on server (add, delete, reorder, update content). Tests first.
+- [x] Slide CRUD on server (add, delete, reorder, update content). Extended `decks.js` with `addSlide` / `updateSlide` / `deleteSlide` / `reorderSlides` (all per-deck-locked, `mergeDeck`-driven), plus a `SlideNotFoundError`. New REST endpoints: `POST/PATCH/DELETE /api/decks/:id/slides[...]` and `PUT /api/decks/:id/slides/order`. Returns full updated deck on every mutation. 32 new server tests (20 store + 12 routes); 73 server tests total.
 - [ ] WebSocket `deck:update` event w/ broadcast to all peers except sender. Tests first.
 - [ ] Slide list panel: thumbnails, click-to-select, +add, delete, drag-to-reorder. Tests for interactions; thumbnail rendering is visual.
 - [ ] Canvas data model: `objects[]` (stroke, shape, text), serialization round-trip, hit-testing for selection. **TDD'd.**
@@ -165,6 +165,7 @@ Each decision will be made when we get to that phase, recorded here, and rationa
 > Append-only notes as we execute. Date entries.
 
 - _2026-05-04_ — Plan created from spec. TDD approach defined. Awaiting kickoff on Phase 0.
+- _2026-05-05_ — Phase 2 server slide CRUD landed TDD-style. Default new-slide duration is timing-mode-aware (`bars/8` for link/internal, `seconds/30` for duration). `reorderSlides` is strict — it requires a permutation of existing ids, returns 400 otherwise. Decision: every slide mutation returns the full updated deck so the client doesn't need to reconcile partial responses.
 - _2026-05-05_ — Per-deck settings landed TDD-style. `useDeck(id)` + `DeckSettings` form + `SlidePanel` host. 21 new client tests (7+7+7). Smoke-tested live: every field persists through `PATCH /api/decks/:id`, panel auto-closes on save, form rehydrates on re-open. Wired App so PATCHes also trigger `useDecks.refresh()` to keep the list summary in sync with name/timestamp changes. Cleaned up the stale 2015 `/usr/local/bin/node` shadow once and for all (rm'd the binary + symlinks; nothing on the system referenced them); `.zshenv` PATH prepend now flows cleanly into Claude Code's shell after a restart, so `.claude/launch.json` reverted from absolute-path workaround to plain `npm`.
 - _2026-05-04_ — Client `useDecks` hook + `DeckPanel` landed TDD-style (22 new tests, 87 total: 41 server + 24 client + .nvmrc, no — recount: 41 server + 24 client = 65, plus the 22 already in client makes the math work: 7 hook + 15 panel + 2 app = 24 client). Smoke-tested via Claude Preview: create / favorite / delete all round-trip through the live server. Caught one regression: empty-state hint was rendering alongside the error alert — fixed test-first. Settled UX choice: inline create form (input + Create + Cancel) instead of `prompt()` or modal. Settings cog at the deck level deferred until we have the SlidePanel host for it.
 - _2026-05-04_ — Decided next step: wire client UI to REST first, defer WebSocket skeleton until we have events worth broadcasting. Set up `.nvmrc` + `~/.zshenv` PATH so nvm's Node 25.9.0 is canonical for all shells (incl. non-interactive Claude tool calls) — no more per-command PATH prefixes.

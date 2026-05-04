@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { DeckNotFoundError } from './decks.js';
+import { DeckNotFoundError, SlideNotFoundError } from './decks.js';
 
 export function createDeckRouter(deckStore) {
   const router = Router();
@@ -58,8 +58,54 @@ export function createDeckRouter(deckStore) {
     }
   });
 
+  // Slides — the order route must be declared before /:slideId so it isn't
+  // captured as a slide id.
+  router.put('/:id/slides/order', async (req, res, next) => {
+    const { order } = req.body ?? {};
+    if (!Array.isArray(order)) {
+      return res.status(400).json({ error: 'order must be an array of slide ids' });
+    }
+    try {
+      res.json(await deckStore.reorderSlides(req.params.id, order));
+    } catch (err) {
+      if (err instanceof DeckNotFoundError) return next(err);
+      if (/order/i.test(err.message)) {
+        return res.status(400).json({ error: err.message });
+      }
+      next(err);
+    }
+  });
+
+  router.post('/:id/slides', async (req, res, next) => {
+    try {
+      const updated = await deckStore.addSlide(req.params.id, req.body ?? {});
+      res.status(201).json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch('/:id/slides/:slideId', async (req, res, next) => {
+    try {
+      res.json(await deckStore.updateSlide(req.params.id, req.params.slideId, req.body ?? {}));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete('/:id/slides/:slideId', async (req, res, next) => {
+    try {
+      res.json(await deckStore.deleteSlide(req.params.id, req.params.slideId));
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.use((err, _req, res, _next) => {
     if (err instanceof DeckNotFoundError) {
+      return res.status(404).json({ error: err.message });
+    }
+    if (err instanceof SlideNotFoundError) {
       return res.status(404).json({ error: err.message });
     }
     res.status(500).json({ error: 'Internal server error' });
