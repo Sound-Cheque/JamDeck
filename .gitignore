@@ -7,6 +7,9 @@ dist/
 .vite/
 coverage/
 
+# Per-user Claude Code settings (the shared launch.json IS committed)
+.claude/settings.local.json
+
 # User content — runtime data, not source
 data/decks/*
 data/media/*

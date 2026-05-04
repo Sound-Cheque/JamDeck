@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { DeckPanel } from './components/DeckPanel.jsx';
+import { SlidePanel } from './components/SlidePanel.jsx';
 import { useDecks } from './hooks/useDecks.js';
+import { useDeck } from './hooks/useDeck.js';
 
 export function App() {
-  const { decks, loading, error, createDeck, deleteDeck, toggleFavorite } = useDecks();
+  const decksState = useDecks();
   const [selectedDeckId, setSelectedDeckId] = useState(null);
+  const deckState = useDeck(selectedDeckId);
 
   return (
     <div className="app">
@@ -13,19 +16,30 @@ export function App() {
       </header>
       <main className="layout">
         <DeckPanel
-          decks={decks}
-          loading={loading}
-          error={error}
+          decks={decksState.decks}
+          loading={decksState.loading}
+          error={decksState.error}
           selectedDeckId={selectedDeckId}
           onSelect={setSelectedDeckId}
-          onCreate={createDeck}
+          onCreate={decksState.createDeck}
           onDelete={(id) => {
-            deleteDeck(id);
+            decksState.deleteDeck(id);
             if (id === selectedDeckId) setSelectedDeckId(null);
           }}
-          onToggleFavorite={toggleFavorite}
+          onToggleFavorite={decksState.toggleFavorite}
         />
-        <aside className="slide-panel" aria-label="Slides" />
+        <SlidePanel
+          deck={deckState.deck}
+          loading={deckState.loading}
+          error={deckState.error}
+          onUpdate={async (patch) => {
+            const updated = await deckState.update(patch);
+            // Keep the deck-list summary in sync with name/favorite/timestamp
+            // changes from this PATCH.
+            await decksState.refresh();
+            return updated;
+          }}
+        />
         <section className="main-panel" aria-label="Slide editor" />
       </main>
     </div>
