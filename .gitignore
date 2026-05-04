@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.env
+.env.local
+.vite/
+coverage/
+
+# User content — runtime data, not source
+data/decks/*
+data/media/*
+!data/decks/.gitkeep
+!data/media/.gitkeep
