@@ -52,7 +52,7 @@ Test-driven development for everything where tests give real value. Write a fail
 Spec §"Phase 1 — Core Shell"
 
 ### Server
-- [ ] `decks.js` — pure module: `listDecks()`, `getDeck(id)`, `createDeck(name)`, `updateDeck(id, patch)`, `deleteDeck(id)`, `toggleFavorite(id)`. JSON files in `./data/decks/`. **Tests first** for each (incl. invalid id, missing file, concurrent writes are last-write-wins).
+- [x] `decks.js` — `createDeckStore({ dataDir })` factory exposing `listDecks()`, `getDeck(id)`, `createDeck({ name })`, `updateDeck(id, patch)`, `deleteDeck(id)`, `toggleFavorite(id)` + `DeckNotFoundError`. JSON files in `./data/decks/`, atomic writes via temp + rename, per-id write queue for in-process serialization, deep-merge of `settings`, wholesale replace of `slides`, id whitelist regex (rejects path separators). 26 tests. _Decision: `listDecks` returns lightweight summaries (id, name, favorite, timestamps, slideCount) — full decks fetched via `getDeck`._
 - [ ] REST endpoints wrapping `decks.js`. **Tests first** with supertest.
 - [ ] WebSocket server: connection lifecycle, `client:join` / `client:leave` broadcasts, message routing skeleton. **Tests first** using `ws` client in-process.
 - [ ] Deck schema validation (zod or hand-rolled). **Tests first.**
@@ -161,4 +161,5 @@ Each decision will be made when we get to that phase, recorded here, and rationa
 > Append-only notes as we execute. Date entries.
 
 - _2026-05-04_ — Plan created from spec. TDD approach defined. Awaiting kickoff on Phase 0.
+- _2026-05-04_ — Phase 1 (server) started: `decks.js` deck store landed TDD-style. 26 tests. Settled two decisions inline: (1) `listDecks` returns summaries not full decks; (2) writes serialize per-deck via an in-process promise queue + atomic temp-file rename — last-write-wins emerges from arrival order, file is never partially written.
 - _2026-05-04_ — Phase 0 complete. Workspace layout: npm workspaces. Server (Express 5 + ws) and client (Vite + React 18) scaffolded with vitest smoke tests both green. `npm run dev` brings both up; client proxies to server. Discovered `/usr/local/bin/node` is a stale 2015 v0.10 install shadowing Homebrew's Node 25 in `$PATH` — worked around by prepending `/opt/homebrew/bin` per command; user should clean up at their leisure.
