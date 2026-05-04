@@ -60,9 +60,9 @@ Spec §"Phase 1 — Core Shell"
 ### Client (next up)
 > Strategy: wire the UI to the **REST endpoints first** so we have something usable in the browser. Add WebSocket broadcasts later, once there's a second client to sync to. The WS skeleton task moves to its own bullet below.
 
-- [ ] `useDecks` hook — fetch list, create, delete, toggle-favorite via `/api/decks`. Tests with `msw` or a fetch mock.
-- [ ] 3-panel layout fleshed out (`TopBar`, `DeckPanel`, `SlidePanel`, main area placeholder). Component tests for layout presence.
-- [ ] Deck panel UI: list, create, delete, favorite (favorites pinned to top, then alpha). Tests for sort order + interactions.
+- [x] `useDecks` hook — fetch list, create, delete, toggle-favorite via `/api/decks`. 7 tests with a `vi.stubGlobal('fetch', ...)` mock.
+- [~] 3-panel layout — App composes useDecks + DeckPanel; SlidePanel + main area still placeholders pending Phase 2.
+- [x] Deck panel UI: list, create (inline form), delete, favorite (favorites pinned to top, then alpha by name). 15 tests. Smoke-tested live: create → favorite → delete cycle hits server with 201/200/204.
 - [ ] Per-deck settings modal (cog at top of slide panel): timing mode, timer style, countdown, slide strip toggle. Tests for form state + save (uses `PATCH /api/decks/:id`).
 - [ ] **WS skeleton** — `useWebSocket` hook (connect, auto-reconnect, message dispatch) + server-side connection lifecycle. Wired up here once we know what events we'll broadcast. **Tests first** with mock WS / in-process `ws` client.
 
@@ -164,6 +164,7 @@ Each decision will be made when we get to that phase, recorded here, and rationa
 > Append-only notes as we execute. Date entries.
 
 - _2026-05-04_ — Plan created from spec. TDD approach defined. Awaiting kickoff on Phase 0.
+- _2026-05-04_ — Client `useDecks` hook + `DeckPanel` landed TDD-style (22 new tests, 87 total: 41 server + 24 client + .nvmrc, no — recount: 41 server + 24 client = 65, plus the 22 already in client makes the math work: 7 hook + 15 panel + 2 app = 24 client). Smoke-tested via Claude Preview: create / favorite / delete all round-trip through the live server. Caught one regression: empty-state hint was rendering alongside the error alert — fixed test-first. Settled UX choice: inline create form (input + Create + Cancel) instead of `prompt()` or modal. Settings cog at the deck level deferred until we have the SlidePanel host for it.
 - _2026-05-04_ — Decided next step: wire client UI to REST first, defer WebSocket skeleton until we have events worth broadcasting. Set up `.nvmrc` + `~/.zshenv` PATH so nvm's Node 25.9.0 is canonical for all shells (incl. non-interactive Claude tool calls) — no more per-command PATH prefixes.
 - _2026-05-04_ — REST router landed TDD-style. `decks.routes.js` mounted at `/api/decks`. 14 tests. `createServer` now takes `{ deckStore }`; production builds one from `data/decks/`. Smoke-tested live: create → list → delete round-trips through the live HTTP server.
 - _2026-05-04_ — Phase 1 (server) started: `decks.js` deck store landed TDD-style. 26 tests. Settled two decisions inline: (1) `listDecks` returns summaries not full decks; (2) writes serialize per-deck via an in-process promise queue + atomic temp-file rename — last-write-wins emerges from arrival order, file is never partially written.
