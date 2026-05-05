@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { CanvasEditor } from './CanvasEditor.jsx';
 
 function slide(content) {
@@ -105,6 +106,78 @@ describe('CanvasEditor', () => {
     mouseEvent(canvas, 'mouseUp', { x: 50, y: 50 });
 
     expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  describe('toolbar', () => {
+    it('renders Brush and Rectangle tool buttons', () => {
+      renderEditor();
+      expect(screen.getByRole('button', { name: /brush/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /rectangle/i })).toBeInTheDocument();
+    });
+
+    it('marks the active tool with aria-pressed=true', () => {
+      renderEditor();
+      const brush = screen.getByRole('button', { name: /brush/i });
+      const rect = screen.getByRole('button', { name: /rectangle/i });
+      expect(brush).toHaveAttribute('aria-pressed', 'true');
+      expect(rect).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('clicking a tool button switches the active tool', async () => {
+      const user = userEvent.setup();
+      renderEditor();
+      await user.click(screen.getByRole('button', { name: /rectangle/i }));
+      expect(screen.getByRole('button', { name: /rectangle/i })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: /brush/i })).toHaveAttribute('aria-pressed', 'false');
+    });
+  });
+
+  describe('rect tool', () => {
+    it('drag-to-define commits a rect with normalized coordinates', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /rectangle/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 10, y: 20 });
+      mouseEvent(canvas, 'mouseMove', { x: 50, y: 80 });
+      mouseEvent(canvas, 'mouseUp', { x: 50, y: 80 });
+
+      expect(onUpdate).toHaveBeenCalledTimes(1);
+      const obj = onUpdate.mock.calls[0][1].content.objects[0];
+      expect(obj.kind).toBe('rect');
+      expect(obj).toMatchObject({ x: 10, y: 20, w: 40, h: 60 });
+      expect(obj._anchor).toBeUndefined(); // private hint stripped on commit
+    });
+
+    it('normalizes a backwards drag', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /rectangle/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 50, y: 80 });
+      mouseEvent(canvas, 'mouseMove', { x: 10, y: 20 });
+      mouseEvent(canvas, 'mouseUp', { x: 10, y: 20 });
+
+      const obj = onUpdate.mock.calls[0][1].content.objects[0];
+      expect(obj).toMatchObject({ x: 10, y: 20, w: 40, h: 60 });
+    });
+
+    it('does not commit a zero-size rect', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /rectangle/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 10, y: 10 });
+      mouseEvent(canvas, 'mouseUp', { x: 10, y: 10 });
+
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
   });
 
   it('uses the configured brush color and width on the stroke', () => {

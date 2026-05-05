@@ -116,3 +116,27 @@ function strokeHitTest(stroke, x, y) {
 }
 
 registerHandler('stroke', { bbox: strokeBbox, hitTest: strokeHitTest });
+
+// ─── Rect ───────────────────────────────────────────────────────────────────
+
+export function createRect({
+  x,
+  y,
+  w,
+  h,
+  stroke = '#222222',
+  fill = 'transparent',
+  strokeWidth = 2,
+} = {}) {
+  return { id: generateId(), kind: 'rect', x, y, w, h, stroke, fill, strokeWidth };
+}
+
+function rectBbox(r) {
+  return { x: r.x, y: r.y, w: r.w, h: r.h };
+}
+
+function rectHitTest(r, x, y) {
+  return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+}
+
+registerHandler('rect', { bbox: rectBbox, hitTest: rectHitTest });

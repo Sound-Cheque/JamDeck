@@ -6,6 +6,7 @@ import {
   updateObject,
   getObject,
   createStroke,
+  createRect,
   bbox,
   hitTest,
 } from './canvas.js';
@@ -145,6 +146,61 @@ describe('hitTest', () => {
 
   it('returns null on an empty canvas', () => {
     expect(hitTest(newCanvas(), 5, 5)).toBeNull();
+  });
+});
+
+describe('rect', () => {
+  it('createRect produces a rectangle with sane defaults', () => {
+    const r = createRect({ x: 10, y: 20, w: 30, h: 40 });
+    expect(r.kind).toBe('rect');
+    expect(r.x).toBe(10);
+    expect(r.y).toBe(20);
+    expect(r.w).toBe(30);
+    expect(r.h).toBe(40);
+    expect(r.stroke).toMatch(/^#/);
+    expect(r.fill).toBe('transparent');
+    expect(r.strokeWidth).toBeGreaterThan(0);
+    expect(r.id).toMatch(/^[a-zA-Z0-9_-]+$/);
+  });
+
+  it('createRect accepts overrides for stroke/fill/strokeWidth', () => {
+    const r = createRect({
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+      stroke: '#abcdef',
+      fill: '#ff0',
+      strokeWidth: 4,
+    });
+    expect(r.stroke).toBe('#abcdef');
+    expect(r.fill).toBe('#ff0');
+    expect(r.strokeWidth).toBe(4);
+  });
+
+  it('bbox of a rect is its own dimensions', () => {
+    expect(bbox(createRect({ x: 5, y: 7, w: 30, h: 50 }))).toEqual({ x: 5, y: 7, w: 30, h: 50 });
+  });
+
+  it('hitTest is true for points inside the rect', () => {
+    const c = addObject(newCanvas(), { ...createRect({ x: 10, y: 10, w: 20, h: 30 }), id: 'r' });
+    expect(hitTest(c, 15, 15)).toBe('r');
+    expect(hitTest(c, 29, 39)).toBe('r'); // near far corner
+    expect(hitTest(c, 10, 10)).toBe('r'); // on near corner
+  });
+
+  it('hitTest is null for points outside the rect', () => {
+    const c = addObject(newCanvas(), { ...createRect({ x: 10, y: 10, w: 20, h: 30 }), id: 'r' });
+    expect(hitTest(c, 5, 5)).toBeNull();
+    expect(hitTest(c, 100, 100)).toBeNull();
+    expect(hitTest(c, 15, 50)).toBeNull(); // below
+  });
+
+  it('topmost rect wins when overlapping', () => {
+    let c = newCanvas();
+    c = addObject(c, { ...createRect({ x: 0, y: 0, w: 50, h: 50 }), id: 'lower' });
+    c = addObject(c, { ...createRect({ x: 0, y: 0, w: 50, h: 50 }), id: 'upper' });
+    expect(hitTest(c, 25, 25)).toBe('upper');
   });
 });
 
