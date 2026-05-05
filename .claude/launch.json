@@ -1,22 +1,32 @@
 {
   "version": "0.0.1",
+  "_comment": "Wraps npm in `sh -c` with PATH prefix so lifecycle scripts (concurrently, vite, node --watch) all resolve `node` to nvm's v25 instead of falling through Claude Code's stale inherited PATH.",
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "PATH=$HOME/.nvm/versions/node/v25.9.0/bin:$PATH npm run dev"
+      ],
       "port": 5173
     },
     {
       "name": "client",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "-w", "client"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "PATH=$HOME/.nvm/versions/node/v25.9.0/bin:$PATH npm run dev -w client"
+      ],
       "port": 5173
     },
     {
       "name": "server",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "-w", "server"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "PATH=$HOME/.nvm/versions/node/v25.9.0/bin:$PATH npm run dev -w server"
+      ],
       "port": 4000
     }
   ]

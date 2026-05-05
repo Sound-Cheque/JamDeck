@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DeckPanel } from './components/DeckPanel.jsx';
 import { SlidePanel } from './components/SlidePanel.jsx';
+import { SlideEditor } from './components/SlideEditor.jsx';
 import { useDecks } from './hooks/useDecks.js';
 import { useDeck } from './hooks/useDeck.js';
 
@@ -68,7 +69,16 @@ export function App() {
           }}
           onSelectSlide={setSelectedSlideId}
         />
-        <section className="main-panel" aria-label="Slide editor" />
+        <section className="main-panel" aria-label="Slide editor">
+          <SlideEditor
+            slide={
+              deckState.deck && selectedSlideId
+                ? deckState.deck.slides.find((s) => s.id === selectedSlideId) ?? null
+                : null
+            }
+            onUpdate={(slideId, patch) => deckState.updateSlide(slideId, patch)}
+          />
+        </section>
       </main>
     </div>
   );
