@@ -7,6 +7,11 @@ import {
   getObject,
   createStroke,
   createRect,
+  createCircle,
+  createLine,
+  createArrow,
+  createTriangle,
+  createText,
   bbox,
   hitTest,
 } from './canvas.js';
@@ -201,6 +206,137 @@ describe('rect', () => {
     c = addObject(c, { ...createRect({ x: 0, y: 0, w: 50, h: 50 }), id: 'lower' });
     c = addObject(c, { ...createRect({ x: 0, y: 0, w: 50, h: 50 }), id: 'upper' });
     expect(hitTest(c, 25, 25)).toBe('upper');
+  });
+});
+
+describe('circle', () => {
+  it('createCircle has sane defaults', () => {
+    const c = createCircle({ cx: 50, cy: 50, r: 20 });
+    expect(c.kind).toBe('circle');
+    expect(c).toMatchObject({ cx: 50, cy: 50, r: 20 });
+    expect(c.stroke).toMatch(/^#/);
+    expect(c.fill).toBe('transparent');
+    expect(c.strokeWidth).toBeGreaterThan(0);
+  });
+
+  it('bbox of a circle is the inscribing square', () => {
+    expect(bbox(createCircle({ cx: 50, cy: 60, r: 10 }))).toEqual({
+      x: 40,
+      y: 50,
+      w: 20,
+      h: 20,
+    });
+  });
+
+  it('hitTest is true inside the disk and false outside', () => {
+    const c = addObject(newCanvas(), { ...createCircle({ cx: 50, cy: 50, r: 10 }), id: 'c' });
+    expect(hitTest(c, 50, 50)).toBe('c'); // center
+    expect(hitTest(c, 55, 55)).toBe('c'); // inside
+    expect(hitTest(c, 50, 60)).toBe('c'); // on edge
+    expect(hitTest(c, 100, 100)).toBeNull();
+    expect(hitTest(c, 50, 70)).toBeNull(); // outside radius
+  });
+});
+
+describe('line', () => {
+  it('createLine has sane defaults', () => {
+    const l = createLine({ x1: 0, y1: 0, x2: 100, y2: 50 });
+    expect(l.kind).toBe('line');
+    expect(l).toMatchObject({ x1: 0, y1: 0, x2: 100, y2: 50 });
+    expect(l.stroke).toMatch(/^#/);
+    expect(l.strokeWidth).toBeGreaterThan(0);
+  });
+
+  it('bbox is min/max of endpoints', () => {
+    expect(bbox(createLine({ x1: 50, y1: 80, x2: 10, y2: 30 }))).toEqual({
+      x: 10,
+      y: 30,
+      w: 40,
+      h: 50,
+    });
+  });
+
+  it('hitTest hits along the segment', () => {
+    const c = addObject(newCanvas(), {
+      ...createLine({ x1: 0, y1: 0, x2: 100, y2: 0, strokeWidth: 4 }),
+      id: 'l',
+    });
+    expect(hitTest(c, 50, 1)).toBe('l');
+    expect(hitTest(c, 50, 100)).toBeNull();
+  });
+});
+
+describe('arrow', () => {
+  it('createArrow shares line geometry', () => {
+    const a = createArrow({ x1: 0, y1: 0, x2: 50, y2: 50 });
+    expect(a.kind).toBe('arrow');
+    expect(a).toMatchObject({ x1: 0, y1: 0, x2: 50, y2: 50 });
+  });
+
+  it('bbox and hitTest behave like line', () => {
+    const c = addObject(newCanvas(), {
+      ...createArrow({ x1: 0, y1: 0, x2: 100, y2: 0, strokeWidth: 4 }),
+      id: 'a',
+    });
+    expect(bbox({ ...createArrow({ x1: 0, y1: 0, x2: 100, y2: 0 }) })).toEqual({
+      x: 0, y: 0, w: 100, h: 0,
+    });
+    expect(hitTest(c, 50, 1)).toBe('a');
+  });
+});
+
+describe('triangle', () => {
+  it('createTriangle has sane defaults (bbox-based)', () => {
+    const t = createTriangle({ x: 10, y: 20, w: 40, h: 30 });
+    expect(t.kind).toBe('triangle');
+    expect(t).toMatchObject({ x: 10, y: 20, w: 40, h: 30 });
+    expect(t.fill).toBe('transparent');
+  });
+
+  it('bbox returns the bounding box', () => {
+    expect(bbox(createTriangle({ x: 0, y: 0, w: 60, h: 40 }))).toEqual({
+      x: 0, y: 0, w: 60, h: 40,
+    });
+  });
+
+  it('hitTest covers the inscribed triangle (apex top-center)', () => {
+    // Triangle: apex (50, 0), base (0, 100) to (100, 100)
+    const c = addObject(newCanvas(), {
+      ...createTriangle({ x: 0, y: 0, w: 100, h: 100 }),
+      id: 't',
+    });
+    expect(hitTest(c, 50, 5)).toBe('t'); // near apex
+    expect(hitTest(c, 50, 99)).toBe('t'); // near base center
+    expect(hitTest(c, 5, 95)).toBe('t'); // near base-left
+    expect(hitTest(c, 5, 5)).toBeNull(); // top-left corner of bbox, outside triangle
+    expect(hitTest(c, 95, 5)).toBeNull(); // top-right corner of bbox, outside triangle
+  });
+});
+
+describe('text', () => {
+  it('createText has sane defaults', () => {
+    const t = createText({ x: 10, y: 20, text: 'hello' });
+    expect(t.kind).toBe('text');
+    expect(t).toMatchObject({ x: 10, y: 20, text: 'hello' });
+    expect(t.color).toMatch(/^#/);
+    expect(t.fontSize).toBeGreaterThan(0);
+  });
+
+  it('bbox is approximate based on fontSize × text length', () => {
+    const t = createText({ x: 0, y: 0, text: 'abc', fontSize: 20 });
+    const b = bbox(t);
+    expect(b.x).toBe(0);
+    expect(b.h).toBe(20);
+    expect(b.w).toBeGreaterThan(0);
+  });
+
+  it('hitTest uses the bounding box', () => {
+    const c = addObject(newCanvas(), {
+      ...createText({ x: 100, y: 100, text: 'hi', fontSize: 20 }),
+      id: 't',
+    });
+    expect(hitTest(c, 105, 105)).toBe('t');
+    expect(hitTest(c, 0, 0)).toBeNull();
   });
 });
 

@@ -109,10 +109,15 @@ describe('CanvasEditor', () => {
   });
 
   describe('toolbar', () => {
-    it('renders Brush and Rectangle tool buttons', () => {
+    it('renders Brush, Rectangle, Circle, Line, Arrow, Triangle, and Text tool buttons', () => {
       renderEditor();
       expect(screen.getByRole('button', { name: /brush/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /rectangle/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /circle/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^line$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /arrow/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /triangle/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /text/i })).toBeInTheDocument();
     });
 
     it('marks the active tool with aria-pressed=true', () => {
@@ -129,6 +134,139 @@ describe('CanvasEditor', () => {
       await user.click(screen.getByRole('button', { name: /rectangle/i }));
       expect(screen.getByRole('button', { name: /rectangle/i })).toHaveAttribute('aria-pressed', 'true');
       expect(screen.getByRole('button', { name: /brush/i })).toHaveAttribute('aria-pressed', 'false');
+    });
+  });
+
+  describe('circle tool', () => {
+    it('drag-to-define commits a circle centered on the anchor', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /circle/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 50, y: 50 });
+      mouseEvent(canvas, 'mouseMove', { x: 50, y: 80 });
+      mouseEvent(canvas, 'mouseUp', { x: 50, y: 80 });
+
+      const obj = onUpdate.mock.calls[0][1].content.objects[0];
+      expect(obj.kind).toBe('circle');
+      expect(obj).toMatchObject({ cx: 50, cy: 50, r: 30 });
+      expect(obj._anchor).toBeUndefined();
+    });
+
+    it('does not commit a zero-radius circle', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /circle/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 30, y: 30 });
+      mouseEvent(canvas, 'mouseUp', { x: 30, y: 30 });
+
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('line / arrow tools', () => {
+    it('line commits with the dragged endpoints', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /^line$/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 10, y: 20 });
+      mouseEvent(canvas, 'mouseMove', { x: 80, y: 90 });
+      mouseEvent(canvas, 'mouseUp', { x: 80, y: 90 });
+
+      const obj = onUpdate.mock.calls[0][1].content.objects[0];
+      expect(obj.kind).toBe('line');
+      expect(obj).toMatchObject({ x1: 10, y1: 20, x2: 80, y2: 90 });
+    });
+
+    it('arrow uses the same drag behavior with kind=arrow', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /arrow/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 10, y: 10 });
+      mouseEvent(canvas, 'mouseMove', { x: 100, y: 10 });
+      mouseEvent(canvas, 'mouseUp', { x: 100, y: 10 });
+
+      const obj = onUpdate.mock.calls[0][1].content.objects[0];
+      expect(obj.kind).toBe('arrow');
+      expect(obj).toMatchObject({ x1: 10, y1: 10, x2: 100, y2: 10 });
+    });
+
+    it('does not commit a zero-length line', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /^line$/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 30, y: 30 });
+      mouseEvent(canvas, 'mouseUp', { x: 30, y: 30 });
+
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('triangle tool', () => {
+    it('drag-to-define commits a triangle inscribed in the bbox', async () => {
+      const user = userEvent.setup();
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /triangle/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 0, y: 0 });
+      mouseEvent(canvas, 'mouseMove', { x: 100, y: 80 });
+      mouseEvent(canvas, 'mouseUp', { x: 100, y: 80 });
+
+      const obj = onUpdate.mock.calls[0][1].content.objects[0];
+      expect(obj.kind).toBe('triangle');
+      expect(obj).toMatchObject({ x: 0, y: 0, w: 100, h: 80 });
+    });
+  });
+
+  describe('text tool', () => {
+    it('prompts for text on click and commits at the click point', async () => {
+      const user = userEvent.setup();
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Hello');
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /text/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 40, y: 50 });
+      mouseEvent(canvas, 'mouseUp', { x: 40, y: 50 });
+
+      expect(promptSpy).toHaveBeenCalled();
+      const obj = onUpdate.mock.calls[0][1].content.objects[0];
+      expect(obj.kind).toBe('text');
+      expect(obj).toMatchObject({ x: 40, y: 50, text: 'Hello' });
+
+      promptSpy.mockRestore();
+    });
+
+    it('aborts when the prompt is cancelled', async () => {
+      const user = userEvent.setup();
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null);
+      const onUpdate = vi.fn();
+      renderEditor({ onUpdate });
+      await user.click(screen.getByRole('button', { name: /text/i }));
+      const canvas = screen.getByTestId('canvas-surface');
+
+      mouseEvent(canvas, 'mouseDown', { x: 10, y: 10 });
+      mouseEvent(canvas, 'mouseUp', { x: 10, y: 10 });
+
+      expect(onUpdate).not.toHaveBeenCalled();
+      promptSpy.mockRestore();
     });
   });
 
