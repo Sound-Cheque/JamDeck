@@ -34,6 +34,7 @@ function renderPanel(props = {}) {
       selectedSlideId={props.selectedSlideId ?? null}
       onUpdate={props.onUpdate ?? vi.fn()}
       onAddSlide={props.onAddSlide ?? vi.fn()}
+      onAddImageSlide={props.onAddImageSlide ?? vi.fn()}
       onDeleteSlide={props.onDeleteSlide ?? vi.fn()}
       onSelectSlide={props.onSelectSlide ?? vi.fn()}
     />,
@@ -109,12 +110,12 @@ describe('SlidePanel', () => {
 
   it('always shows an Add Slide button when a deck is loaded', () => {
     renderPanel({ deck: deck({ slides: [] }) });
-    expect(screen.getByRole('button', { name: /add slide/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^add slide$/i })).toBeInTheDocument();
   });
 
   it('does not show Add Slide when no deck is loaded', () => {
     renderPanel();
-    expect(screen.queryByRole('button', { name: /add slide/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^add slide$/i })).not.toBeInTheDocument();
   });
 
   it('clicking Add Slide calls onAddSlide', async () => {
@@ -122,8 +123,21 @@ describe('SlidePanel', () => {
     const onAddSlide = vi.fn().mockResolvedValue();
     renderPanel({ deck: deck({ slides: [] }), onAddSlide });
 
-    await user.click(screen.getByRole('button', { name: /add slide/i }));
+    await user.click(screen.getByRole('button', { name: /^add slide$/i }));
     expect(onAddSlide).toHaveBeenCalledTimes(1);
+  });
+
+  it('always shows an Add Image button when a deck is loaded', () => {
+    renderPanel({ deck: deck({ slides: [] }) });
+    expect(screen.getByRole('button', { name: /add image/i })).toBeInTheDocument();
+  });
+
+  it('clicking Add Image calls onAddImageSlide', async () => {
+    const user = userEvent.setup();
+    const onAddImageSlide = vi.fn().mockResolvedValue();
+    renderPanel({ deck: deck({ slides: [] }), onAddImageSlide });
+    await user.click(screen.getByRole('button', { name: /add image/i }));
+    expect(onAddImageSlide).toHaveBeenCalledTimes(1);
   });
 
   describe('with slides', () => {

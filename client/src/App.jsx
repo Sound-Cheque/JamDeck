@@ -62,6 +62,15 @@ export function App() {
             if (last) setSelectedSlideId(last.id);
             await decksState.refresh();
           }}
+          onAddImageSlide={async () => {
+            const updated = await deckState.addSlide({
+              type: 'image',
+              content: { src: null },
+            });
+            const last = updated.slides[updated.slides.length - 1];
+            if (last) setSelectedSlideId(last.id);
+            await decksState.refresh();
+          }}
           onDeleteSlide={async (slideId) => {
             await deckState.deleteSlide(slideId);
             if (slideId === selectedSlideId) setSelectedSlideId(null);

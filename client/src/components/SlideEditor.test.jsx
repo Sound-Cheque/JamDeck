@@ -25,14 +25,25 @@ describe('SlideEditor', () => {
     expect(screen.getByTestId('canvas-surface')).toBeInTheDocument();
   });
 
-  it('renders a placeholder for non-canvas slide types', () => {
+  it('renders the image editor for image slides', () => {
     const slide = {
       id: 's1',
       type: 'image',
       duration: { unit: 'seconds', value: 30 },
-      content: { src: 'media/foo.jpg' },
+      content: { src: '/media/abc.png' },
     };
     render(<SlideEditor slide={slide} onUpdate={vi.fn()} />);
-    expect(screen.getByText(/image/i)).toBeInTheDocument();
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/media/abc.png');
+  });
+
+  it('renders a placeholder for unknown slide types', () => {
+    const slide = {
+      id: 's1',
+      type: 'video',
+      duration: { unit: 'seconds', value: 30 },
+      content: { src: 'foo.mp4' },
+    };
+    render(<SlideEditor slide={slide} onUpdate={vi.fn()} />);
+    expect(screen.getByText(/unknown slide type/i)).toBeInTheDocument();
   });
 });

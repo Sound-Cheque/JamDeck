@@ -14,6 +14,7 @@ export function SlidePanel({
   selectedSlideId,
   onUpdate,
   onAddSlide,
+  onAddImageSlide,
   onDeleteSlide,
   onSelectSlide,
 }) {
@@ -85,14 +86,24 @@ export function SlidePanel({
             })}
           </ul>
         )}
-        <button
-          type="button"
-          className="slide-panel__add"
-          aria-label="Add slide"
-          onClick={() => onAddSlide()}
-        >
-          + Add Slide
-        </button>
+        <div className="slide-panel__add-row">
+          <button
+            type="button"
+            className="slide-panel__add"
+            aria-label="Add slide"
+            onClick={() => onAddSlide()}
+          >
+            + Add Slide
+          </button>
+          <button
+            type="button"
+            className="slide-panel__add slide-panel__add--image"
+            aria-label="Add image"
+            onClick={() => onAddImageSlide()}
+          >
+            + Add Image
+          </button>
+        </div>
       </>
     );
   }
