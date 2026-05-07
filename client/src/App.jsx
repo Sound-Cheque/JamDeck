@@ -3,6 +3,7 @@ import { DeckPanel } from './components/DeckPanel.jsx';
 import { SlidePanel } from './components/SlidePanel.jsx';
 import { SlideEditor } from './components/SlideEditor.jsx';
 import { PlaybackView } from './components/PlaybackView.jsx';
+import { TopBar } from './components/TopBar.jsx';
 import { useDecks } from './hooks/useDecks.js';
 import { useDeck } from './hooks/useDeck.js';
 import { useWebSocket } from './hooks/useWebSocket.js';
@@ -71,9 +72,18 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="top-bar">
-        <h1>Jam Deck</h1>
-      </header>
+      <TopBar
+        deck={deckState.deck}
+        playbackState={playbackState.state}
+        onStart={(deckId) => playbackState.start(deckId)}
+        onStop={() => playbackState.stop()}
+        onToggleLoop={async () => {
+          if (!deckState.deck) return;
+          const next = !deckState.deck.settings.loop;
+          await deckState.update({ settings: { loop: next } });
+          await decksState.refresh();
+        }}
+      />
       <main className="layout">
         <DeckPanel
           decks={decksState.decks}

@@ -143,6 +143,7 @@ ul {
 .top-bar {
   display: flex;
   align-items: center;
+  gap: var(--space-4);
   height: var(--top-bar-h);
   padding: 0 var(--space-4);
   background: var(--panel);
@@ -152,6 +153,41 @@ ul {
 .top-bar h1 {
   font-size: 16px;
   font-weight: 600;
+  margin-right: var(--space-3);
+}
+
+.top-bar__controls {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.top-bar__play,
+.top-bar__stop {
+  font-size: 13px;
+  padding: var(--space-1) var(--space-3);
+}
+
+.top-bar__play {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.top-bar__play:hover:not(:disabled) {
+  background: #4a5af0;
+}
+
+.top-bar__stop {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
+.top-bar__loop[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .layout {
