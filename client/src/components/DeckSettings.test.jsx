@@ -100,4 +100,63 @@ describe('DeckSettings', () => {
     rerender(<DeckSettings deck={deck({ internalBpm: 88 })} onSave={vi.fn()} />);
     expect(screen.getByRole('spinbutton', { name: /internal bpm/i })).toHaveValue(88);
   });
+
+  describe('deck name', () => {
+    it('renders a deck name input pre-filled with the current name', () => {
+      renderSettings({ deck: { ...deck(), name: 'Original' } });
+      expect(screen.getByRole('textbox', { name: /deck name/i })).toHaveValue('Original');
+    });
+
+    it('Save submits a patch including the new name (trimmed)', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockResolvedValue();
+      renderSettings({ deck: { ...deck(), name: 'Original' }, onSave });
+
+      const input = screen.getByRole('textbox', { name: /deck name/i });
+      await user.clear(input);
+      await user.type(input, '  Renamed  ');
+      await user.click(screen.getByRole('button', { name: /save/i }));
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+      const patch = onSave.mock.calls[0][0];
+      expect(patch.name).toBe('Renamed');
+      expect(patch.settings).toBeDefined();
+    });
+
+    it('does not submit when the name is empty or whitespace', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn();
+      renderSettings({ deck: { ...deck(), name: 'Original' }, onSave });
+
+      const input = screen.getByRole('textbox', { name: /deck name/i });
+      await user.clear(input);
+      await user.type(input, '   ');
+      await user.click(screen.getByRole('button', { name: /save/i }));
+
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it('Cancel reverts the name to the persisted value', async () => {
+      const user = userEvent.setup();
+      renderSettings({ deck: { ...deck(), name: 'Original' } });
+
+      const input = screen.getByRole('textbox', { name: /deck name/i });
+      await user.clear(input);
+      await user.type(input, 'Half-renamed');
+      expect(input).toHaveValue('Half-renamed');
+
+      await user.click(screen.getByRole('button', { name: /cancel/i }));
+      expect(screen.getByRole('textbox', { name: /deck name/i })).toHaveValue('Original');
+    });
+
+    it('rehydrates the name input when a different deck is loaded', () => {
+      const { rerender } = renderSettings({ deck: { ...deck({}), id: 'a', name: 'First' } });
+      expect(screen.getByRole('textbox', { name: /deck name/i })).toHaveValue('First');
+
+      rerender(
+        <DeckSettings deck={{ ...deck({}), id: 'b', name: 'Second' }} onSave={vi.fn()} />,
+      );
+      expect(screen.getByRole('textbox', { name: /deck name/i })).toHaveValue('Second');
+    });
+  });
 });

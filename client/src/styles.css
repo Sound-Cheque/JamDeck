@@ -413,6 +413,23 @@ ul {
   width: 80px;
 }
 
+.deck-settings__name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.deck-settings__name input {
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+}
+
 .deck-settings__actions {
   display: flex;
   gap: var(--space-2);

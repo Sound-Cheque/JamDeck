@@ -13,26 +13,40 @@ const TIMER_STYLES = [
 
 export function DeckSettings({ deck, onSave }) {
   const [draft, setDraft] = useState(deck.settings);
+  const [draftName, setDraftName] = useState(deck.name);
 
-  // When the underlying deck (or its settings) changes — e.g. selecting a
-  // different deck — re-seed the draft form state.
+  // When the underlying deck changes — e.g. selecting a different deck —
+  // re-seed the draft form state from the new deck.
   useEffect(() => {
     setDraft(deck.settings);
-  }, [deck.id, deck.settings]);
+    setDraftName(deck.name);
+  }, [deck.id, deck.name, deck.settings]);
 
   const set = (partial) => setDraft((prev) => ({ ...prev, ...partial }));
 
   async function handleSave(event) {
     event.preventDefault();
-    await onSave({ settings: draft });
+    const trimmedName = draftName.trim();
+    if (!trimmedName) return;
+    await onSave({ name: trimmedName, settings: draft });
   }
 
   function handleCancel() {
     setDraft(deck.settings);
+    setDraftName(deck.name);
   }
 
   return (
     <form className="deck-settings" onSubmit={handleSave}>
+      <label className="deck-settings__name">
+        Deck name
+        <input
+          type="text"
+          value={draftName}
+          onChange={(e) => setDraftName(e.target.value)}
+        />
+      </label>
+
       <fieldset>
         <legend>Timing mode</legend>
         {TIMING_MODES.map(({ value, label }) => (
