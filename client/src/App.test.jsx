@@ -13,15 +13,24 @@ class StubWebSocket {
   send() {}
 }
 
+function jsonResponse(body) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 beforeEach(() => {
+  // Each call constructs a fresh Response so the body can be read more than
+  // once across the multiple hooks that fire on mount (useDecks, usePlayback).
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue(
-      new Response(JSON.stringify([]), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    ),
+    vi.fn((url) => {
+      if (typeof url === 'string' && url.startsWith('/api/playback')) {
+        return Promise.resolve(jsonResponse({ state: 'idle' }));
+      }
+      return Promise.resolve(jsonResponse([]));
+    }),
   );
   vi.stubGlobal('WebSocket', StubWebSocket);
 });

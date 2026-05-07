@@ -2,42 +2,52 @@ import { useCallback, useEffect, useState } from 'react';
 import { DeckPanel } from './components/DeckPanel.jsx';
 import { SlidePanel } from './components/SlidePanel.jsx';
 import { SlideEditor } from './components/SlideEditor.jsx';
+import { PlaybackView } from './components/PlaybackView.jsx';
 import { useDecks } from './hooks/useDecks.js';
 import { useDeck } from './hooks/useDeck.js';
 import { useWebSocket } from './hooks/useWebSocket.js';
+import { usePlayback } from './hooks/usePlayback.js';
 
 export function App() {
   const decksState = useDecks();
   const [selectedDeckId, setSelectedDeckId] = useState(null);
   const [selectedSlideId, setSelectedSlideId] = useState(null);
   const deckState = useDeck(selectedDeckId);
+  const playbackState = usePlayback();
 
   // Live sync — react to mutations broadcast by the server. We refresh state
   // from REST rather than applying message payloads directly; redundant with
   // self-originating broadcasts but simple and idempotent.
   const handleMessage = useCallback(
     (msg) => {
+      // Playback messages drive playbackState; deck messages drive deck state.
+      // The hook filters by type, so it's safe to forward everything.
+      playbackState.handleMessage(msg);
+
       switch (msg.type) {
         case 'deck:created':
           decksState.refresh();
           break;
         case 'deck:deleted':
           decksState.refresh();
-          if (msg.deckId === selectedDeckId) {
-            setSelectedDeckId(null);
-          }
+          if (msg.deckId === selectedDeckId) setSelectedDeckId(null);
           break;
         case 'deck:update':
           decksState.refresh();
-          if (msg.deck?.id === selectedDeckId) {
-            deckState.refresh();
+          if (msg.deck?.id === selectedDeckId) deckState.refresh();
+          break;
+        case 'playback:start':
+          // Auto-switch to whichever deck is being played so the operator
+          // always sees the live view.
+          if (msg.deckId && msg.deckId !== selectedDeckId) {
+            setSelectedDeckId(msg.deckId);
           }
           break;
         default:
           break;
       }
     },
-    [decksState, deckState, selectedDeckId],
+    [decksState, deckState, selectedDeckId, playbackState],
   );
   useWebSocket('/api/ws', handleMessage);
 
@@ -53,6 +63,11 @@ export function App() {
       setSelectedSlideId(null);
     }
   }, [deckState.deck, selectedSlideId]);
+
+  const isPlayingLoadedDeck =
+    playbackState.state.state === 'playing' &&
+    deckState.deck &&
+    playbackState.state.deckId === deckState.deck.id;
 
   return (
     <div className="app">
@@ -109,14 +124,18 @@ export function App() {
           onSelectSlide={setSelectedSlideId}
         />
         <section className="main-panel" aria-label="Slide editor">
-          <SlideEditor
-            slide={
-              deckState.deck && selectedSlideId
-                ? deckState.deck.slides.find((s) => s.id === selectedSlideId) ?? null
-                : null
-            }
-            onUpdate={(slideId, patch) => deckState.updateSlide(slideId, patch)}
-          />
+          {isPlayingLoadedDeck ? (
+            <PlaybackView deck={deckState.deck} playback={playbackState.state} />
+          ) : (
+            <SlideEditor
+              slide={
+                deckState.deck && selectedSlideId
+                  ? deckState.deck.slides.find((s) => s.id === selectedSlideId) ?? null
+                  : null
+              }
+              onUpdate={(slideId, patch) => deckState.updateSlide(slideId, patch)}
+            />
+          )}
         </section>
       </main>
     </div>
