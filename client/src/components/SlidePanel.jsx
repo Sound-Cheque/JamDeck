@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DeckSettings } from './DeckSettings.jsx';
+import { SlideThumbnail } from './SlideThumbnail.jsx';
 
 function describeDuration(duration) {
   if (!duration) return '';
@@ -70,6 +71,7 @@ export function SlidePanel({
                     onClick={() => onSelectSlide(slide.id)}
                   >
                     <span className="slide-panel__num">{num}</span>
+                    <SlideThumbnail slide={slide} />
                     <span className="slide-panel__type">{slide.type}</span>
                     <span className="slide-panel__duration">{describeDuration(slide.duration)}</span>
                   </button>
