@@ -140,6 +140,28 @@ describe('PlaybackView', () => {
     expect(screen.queryByLabelText(/slide strip/i)).not.toBeInTheDocument();
   });
 
+  it('fills the timer using the deck BPM for bars-mode slides under internal timing', () => {
+    const d = {
+      ...deck({ timingMode: 'internal', internalBpm: 120 }),
+    };
+    // Replace slides with bars-mode durations: 4 bars at 120 BPM = 8 seconds.
+    d.slides = [
+      { id: 's1', type: 'canvas', duration: { unit: 'bars', value: 4 }, content: { objects: [], background: '#fff' } },
+    ];
+    const { container } = render(<PlaybackView deck={d} playback={playback()} />);
+
+    // 2s into an 8s slide → fraction ≈ 0.25 → fill width ≈ 25%.
+    act(() => {
+      vi.setSystemTime(new Date('2026-01-01T00:00:02.000Z'));
+      vi.advanceTimersByTime(50);
+    });
+
+    const fill = container.querySelector('.playback-view__fill');
+    const width = parseFloat(fill.style.width);
+    expect(width).toBeGreaterThan(23);
+    expect(width).toBeLessThan(27);
+  });
+
   it('marks the current slide in the strip with aria-current', () => {
     const d = deck();
     render(<PlaybackView deck={d} playback={playback({ slideIndex: 1 })} />);

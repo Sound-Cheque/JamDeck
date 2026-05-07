@@ -1,5 +1,6 @@
 import { useNow } from '../hooks/useNow.js';
-import { computeProgress, slideDurationMs } from '../utils/progress.js';
+import { computeProgress } from '../utils/progress.js';
+import { slideDurationMs } from '../utils/timing.js';
 import { SlideRenderer } from './SlideRenderer.jsx';
 import { SlideThumbnail } from './SlideThumbnail.jsx';
 
@@ -8,7 +9,7 @@ const TICK_MS = 50;
 export function PlaybackView({ deck, playback }) {
   const now = useNow(TICK_MS);
   const slide = deck?.slides?.[playback?.slideIndex ?? -1] ?? null;
-  const durationMs = slide ? slideDurationMs(slide) : null;
+  const durationMs = slide ? slideDurationMs(slide, deck?.settings) : null;
   const { fraction, remainingMs } = computeProgress({
     startedAt: playback?.startedAt,
     durationMs: durationMs ?? 0,

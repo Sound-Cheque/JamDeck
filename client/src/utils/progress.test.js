@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeProgress, slideDurationMs } from './progress.js';
+import { computeProgress } from './progress.js';
 
 describe('computeProgress', () => {
   it('returns zeros when startedAt is missing', () => {
@@ -56,17 +56,5 @@ describe('computeProgress', () => {
   });
 });
 
-describe('slideDurationMs', () => {
-  it('returns ms for seconds-mode slides', () => {
-    expect(slideDurationMs({ duration: { unit: 'seconds', value: 30 } })).toBe(30_000);
-  });
-
-  it('returns null for bars-mode slides (cannot resolve without tempo)', () => {
-    expect(slideDurationMs({ duration: { unit: 'bars', value: 8 } })).toBeNull();
-  });
-
-  it('returns null for slides without duration', () => {
-    expect(slideDurationMs({})).toBeNull();
-    expect(slideDurationMs(null)).toBeNull();
-  });
-});
+// slideDurationMs lives in ./timing.js and is tested there — bars-mode
+// resolution is timing-mode-aware now.

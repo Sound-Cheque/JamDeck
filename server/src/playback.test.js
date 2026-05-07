@@ -136,6 +136,46 @@ describe('automatic slide advance', () => {
     expect(controller.getState()).toEqual({ state: 'idle' });
   });
 
+  it('advances bars-mode slides at the deck BPM under internal-clock timing', async () => {
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, {
+      settings: { timingMode: 'internal', internalBpm: 120 },
+    });
+    // 4 bars at 120 BPM in 4/4 = 4 * 4 * 500ms = 8000ms
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 4 } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 4 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    broadcast.mockClear();
+
+    // Just before the 4-bar mark: still on slide 0
+    await vi.advanceTimersByTimeAsync(7_999);
+    expect(controller.getState().slideIndex).toBe(0);
+
+    // Cross the 4-bar mark: advance to slide 1
+    await vi.advanceTimersByTimeAsync(2);
+    expect(controller.getState().slideIndex).toBe(1);
+    expect(broadcast.mock.calls.at(-1)[0].type).toBe('playback:slide');
+  });
+
+  it('does not auto-advance bars-mode slides under Link timing (handled elsewhere)', async () => {
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, {
+      settings: { timingMode: 'link', internalBpm: 120 },
+    });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    broadcast.mockClear();
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(controller.getState().slideIndex).toBe(0);
+    expect(broadcast).not.toHaveBeenCalled();
+  });
+
   it('loops back to slide 0 after the last slide when loop is true', async () => {
     deck = await makeDeck({ slides: 2, loop: true, durations: [2, 2] });
     await controller.start(deck.id);

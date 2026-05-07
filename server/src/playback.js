@@ -11,6 +11,8 @@
 //   - { type: 'playback:stop' }
 // `now` is injectable so tests can pin time.
 
+import { slideDurationMs } from './timing.js';
+
 export function createPlaybackController({ deckStore, broadcast = () => {}, now = () => Date.now() } = {}) {
   let state = { state: 'idle' };
   let activeDeck = null;
@@ -57,8 +59,8 @@ export function createPlaybackController({ deckStore, broadcast = () => {}, now 
   }
 
   function scheduleAdvance(slide) {
-    const ms = slideDurationMs(slide);
-    if (ms == null) return; // can't auto-advance (bars-mode unsupported in Phase 3)
+    const ms = slideDurationMs(slide, activeDeck.settings);
+    if (ms == null) return; // bars-mode under Link timing — driven elsewhere
     timer = setTimeout(advance, ms);
   }
 
@@ -83,11 +85,4 @@ export function createPlaybackController({ deckStore, broadcast = () => {}, now 
   }
 
   return { getState, start, stop };
-}
-
-function slideDurationMs(slide) {
-  if (slide?.duration?.unit === 'seconds') {
-    return slide.duration.value * 1000;
-  }
-  return null;
 }

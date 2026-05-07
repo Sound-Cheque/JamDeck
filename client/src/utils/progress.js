@@ -15,9 +15,6 @@ export function computeProgress({ startedAt, durationMs, now }) {
   return { elapsedMs, remainingMs, fraction };
 }
 
-export function slideDurationMs(slide) {
-  if (slide?.duration?.unit === 'seconds') {
-    return slide.duration.value * 1000;
-  }
-  return null;
-}
+// Re-exported from timing.js so existing imports keep working. Bars-mode
+// resolution is timing-mode-aware now — see ./timing.js.
+export { slideDurationMs } from './timing.js';
