@@ -60,7 +60,7 @@ afterEach(async () => {
 
 describe('WebSocket broadcast', () => {
   it('delivers deck:created to a connected client when a deck is created via REST', async () => {
-    const ws = new WebSocket(`ws://localhost:${port}/ws`);
+    const ws = new WebSocket(`ws://localhost:${port}/api/ws`);
     await waitForOpen(ws);
 
     const messageP = nextMessage(ws);
@@ -80,8 +80,8 @@ describe('WebSocket broadcast', () => {
   });
 
   it('fans out a single mutation to multiple connected clients', async () => {
-    const a = new WebSocket(`ws://localhost:${port}/ws`);
-    const b = new WebSocket(`ws://localhost:${port}/ws`);
+    const a = new WebSocket(`ws://localhost:${port}/api/ws`);
+    const b = new WebSocket(`ws://localhost:${port}/api/ws`);
     await Promise.all([waitForOpen(a), waitForOpen(b)]);
 
     const aMsg = nextMessage(a);
@@ -101,8 +101,8 @@ describe('WebSocket broadcast', () => {
     b.close();
   });
 
-  it('rejects upgrade requests on paths other than /ws', async () => {
-    const ws = new WebSocket(`ws://localhost:${port}/not-ws`);
+  it('rejects upgrade requests on paths other than /api/ws', async () => {
+    const ws = new WebSocket(`ws://localhost:${port}/ws`);
     await new Promise((resolve) => {
       ws.once('error', resolve);
       ws.once('unexpected-response', resolve);

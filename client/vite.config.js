@@ -6,9 +6,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:4000',
+      // Single proxy for everything API-related. ws: true makes WebSocket
+      // upgrades on /api/ws forward to the server too — keeps our WS off
+      // the top-level /ws path which conflicts with Vite's own HMR routing.
+      '/api': { target: 'http://localhost:4000', ws: true },
       '/media': 'http://localhost:4000',
-      '/ws': { target: 'ws://localhost:4000', ws: true },
     },
   },
   test: {

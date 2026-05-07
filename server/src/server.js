@@ -22,7 +22,11 @@ export function createServer({
   app.use(express.json());
 
   const httpServer = http.createServer(app);
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // Path is /api/ws (not /ws) because Vite's HMR also handles WebSocket
+  // upgrades on the dev server port, and a top-level /ws path confuses its
+  // proxy routing. Nesting under /api keeps everything app-related on one
+  // proxied prefix.
+  const wss = new WebSocketServer({ server: httpServer, path: '/api/ws' });
 
   // Default broadcaster: send a JSON message to every open WS client.
   // Tests can inject a spy via the `broadcast` option to skip the WS layer.

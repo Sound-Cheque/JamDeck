@@ -39,7 +39,7 @@ export function App() {
     },
     [decksState, deckState, selectedDeckId],
   );
-  useWebSocket('/ws', handleMessage);
+  useWebSocket('/api/ws', handleMessage);
 
   // When the loaded deck changes (or its slides change), keep the slide
   // selection in a sane state — clear it if the selected slide vanished.
