@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { DeckNotFoundError, SlideNotFoundError } from './decks.js';
 
-export function createDeckRouter(deckStore) {
+export function createDeckRouter(deckStore, broadcast = () => {}) {
   const router = Router();
 
   router.get('/', async (_req, res, next) => {
@@ -20,6 +20,7 @@ export function createDeckRouter(deckStore) {
     try {
       const deck = await deckStore.createDeck({ name });
       res.status(201).json(deck);
+      broadcast({ type: 'deck:created', deck });
     } catch (err) {
       next(err);
     }
@@ -35,7 +36,9 @@ export function createDeckRouter(deckStore) {
 
   router.patch('/:id', async (req, res, next) => {
     try {
-      res.json(await deckStore.updateDeck(req.params.id, req.body ?? {}));
+      const deck = await deckStore.updateDeck(req.params.id, req.body ?? {});
+      res.json(deck);
+      broadcast({ type: 'deck:update', deck });
     } catch (err) {
       next(err);
     }
@@ -45,6 +48,7 @@ export function createDeckRouter(deckStore) {
     try {
       await deckStore.deleteDeck(req.params.id);
       res.status(204).end();
+      broadcast({ type: 'deck:deleted', deckId: req.params.id });
     } catch (err) {
       next(err);
     }
@@ -52,7 +56,9 @@ export function createDeckRouter(deckStore) {
 
   router.post('/:id/favorite', async (req, res, next) => {
     try {
-      res.json(await deckStore.toggleFavorite(req.params.id));
+      const deck = await deckStore.toggleFavorite(req.params.id);
+      res.json(deck);
+      broadcast({ type: 'deck:update', deck });
     } catch (err) {
       next(err);
     }
@@ -66,7 +72,9 @@ export function createDeckRouter(deckStore) {
       return res.status(400).json({ error: 'order must be an array of slide ids' });
     }
     try {
-      res.json(await deckStore.reorderSlides(req.params.id, order));
+      const deck = await deckStore.reorderSlides(req.params.id, order);
+      res.json(deck);
+      broadcast({ type: 'deck:update', deck });
     } catch (err) {
       if (err instanceof DeckNotFoundError) return next(err);
       if (/order/i.test(err.message)) {
@@ -78,8 +86,9 @@ export function createDeckRouter(deckStore) {
 
   router.post('/:id/slides', async (req, res, next) => {
     try {
-      const updated = await deckStore.addSlide(req.params.id, req.body ?? {});
-      res.status(201).json(updated);
+      const deck = await deckStore.addSlide(req.params.id, req.body ?? {});
+      res.status(201).json(deck);
+      broadcast({ type: 'deck:update', deck });
     } catch (err) {
       next(err);
     }
@@ -87,7 +96,13 @@ export function createDeckRouter(deckStore) {
 
   router.patch('/:id/slides/:slideId', async (req, res, next) => {
     try {
-      res.json(await deckStore.updateSlide(req.params.id, req.params.slideId, req.body ?? {}));
+      const deck = await deckStore.updateSlide(
+        req.params.id,
+        req.params.slideId,
+        req.body ?? {},
+      );
+      res.json(deck);
+      broadcast({ type: 'deck:update', deck });
     } catch (err) {
       next(err);
     }
@@ -95,7 +110,9 @@ export function createDeckRouter(deckStore) {
 
   router.delete('/:id/slides/:slideId', async (req, res, next) => {
     try {
-      res.json(await deckStore.deleteSlide(req.params.id, req.params.slideId));
+      const deck = await deckStore.deleteSlide(req.params.id, req.params.slideId);
+      res.json(deck);
+      broadcast({ type: 'deck:update', deck });
     } catch (err) {
       next(err);
     }

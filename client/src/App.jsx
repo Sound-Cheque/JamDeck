@@ -1,15 +1,45 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { DeckPanel } from './components/DeckPanel.jsx';
 import { SlidePanel } from './components/SlidePanel.jsx';
 import { SlideEditor } from './components/SlideEditor.jsx';
 import { useDecks } from './hooks/useDecks.js';
 import { useDeck } from './hooks/useDeck.js';
+import { useWebSocket } from './hooks/useWebSocket.js';
 
 export function App() {
   const decksState = useDecks();
   const [selectedDeckId, setSelectedDeckId] = useState(null);
   const [selectedSlideId, setSelectedSlideId] = useState(null);
   const deckState = useDeck(selectedDeckId);
+
+  // Live sync — react to mutations broadcast by the server. We refresh state
+  // from REST rather than applying message payloads directly; redundant with
+  // self-originating broadcasts but simple and idempotent.
+  const handleMessage = useCallback(
+    (msg) => {
+      switch (msg.type) {
+        case 'deck:created':
+          decksState.refresh();
+          break;
+        case 'deck:deleted':
+          decksState.refresh();
+          if (msg.deckId === selectedDeckId) {
+            setSelectedDeckId(null);
+          }
+          break;
+        case 'deck:update':
+          decksState.refresh();
+          if (msg.deck?.id === selectedDeckId) {
+            deckState.refresh();
+          }
+          break;
+        default:
+          break;
+      }
+    },
+    [decksState, deckState, selectedDeckId],
+  );
+  useWebSocket('/ws', handleMessage);
 
   // When the loaded deck changes (or its slides change), keep the slide
   // selection in a sane state — clear it if the selected slide vanished.

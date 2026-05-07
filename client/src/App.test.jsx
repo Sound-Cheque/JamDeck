@@ -2,6 +2,17 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { App } from './App.jsx';
 
+// Inert WebSocket — App opens one on mount; we don't drive messages here.
+class StubWebSocket {
+  constructor() {
+    this.readyState = 0;
+    this.OPEN = 1;
+    this.CLOSED = 3;
+  }
+  close() {}
+  send() {}
+}
+
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
@@ -12,6 +23,7 @@ beforeEach(() => {
       }),
     ),
   );
+  vi.stubGlobal('WebSocket', StubWebSocket);
 });
 
 afterEach(() => {

@@ -6,7 +6,14 @@ import { createDeckRouter } from './decks.routes.js';
 import { createMediaStore } from './media.js';
 import { createMediaRouter } from './media.routes.js';
 
-export function createServer({ deckStore, mediaStore, mediaDir } = {}) {
+const WS_OPEN = 1; // ws library readyState constant
+
+export function createServer({
+  deckStore,
+  mediaStore,
+  mediaDir,
+  broadcast: injectedBroadcast,
+} = {}) {
   const decks = deckStore ?? createDeckStore({ dataDir: 'data/decks' });
   const resolvedMediaDir = mediaDir ?? 'data/media';
   const media = mediaStore ?? createMediaStore({ dataDir: resolvedMediaDir });
@@ -14,16 +21,29 @@ export function createServer({ deckStore, mediaStore, mediaDir } = {}) {
   const app = express();
   app.use(express.json());
 
+  const httpServer = http.createServer(app);
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+
+  // Default broadcaster: send a JSON message to every open WS client.
+  // Tests can inject a spy via the `broadcast` option to skip the WS layer.
+  const broadcast =
+    injectedBroadcast ??
+    ((message) => {
+      const data = JSON.stringify(message);
+      for (const client of wss.clients) {
+        if (client.readyState === WS_OPEN) {
+          client.send(data);
+        }
+      }
+    });
+
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });
   });
 
-  app.use('/api/decks', createDeckRouter(decks));
+  app.use('/api/decks', createDeckRouter(decks, broadcast));
   app.use('/api/media', createMediaRouter(media));
   app.use('/media', express.static(resolvedMediaDir));
 
-  const httpServer = http.createServer(app);
-  const wss = new WebSocketServer({ server: httpServer });
-
-  return { app, httpServer, wss, deckStore: decks, mediaStore: media };
+  return { app, httpServer, wss, deckStore: decks, mediaStore: media, broadcast };
 }
