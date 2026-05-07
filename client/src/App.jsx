@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DeckPanel } from './components/DeckPanel.jsx';
 import { SlidePanel } from './components/SlidePanel.jsx';
 import { SlideEditor } from './components/SlideEditor.jsx';
@@ -8,6 +8,8 @@ import { useDecks } from './hooks/useDecks.js';
 import { useDeck } from './hooks/useDeck.js';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { usePlayback } from './hooks/usePlayback.js';
+import { useMetronome } from './hooks/useMetronome.js';
+import { createTonePlayer } from './utils/audio.js';
 
 export function App() {
   const decksState = useDecks();
@@ -69,6 +71,19 @@ export function App() {
     playbackState.state.state === 'playing' &&
     deckState.deck &&
     playbackState.state.deckId === deckState.deck.id;
+
+  // One tone player for the lifetime of the app. AudioContext stays lazy —
+  // it's created on the first beat, after the user's Play click satisfies
+  // browser autoplay policy.
+  const tonePlayer = useMemo(() => createTonePlayer(), []);
+  useMetronome({
+    enabled:
+      isPlayingLoadedDeck && deckState.deck.settings?.timingMode === 'internal',
+    startedAt: playbackState.state.startedAt,
+    bpm: deckState.deck?.settings?.internalBpm,
+    beatsPerBar: 4,
+    player: tonePlayer,
+  });
 
   return (
     <div className="app">
