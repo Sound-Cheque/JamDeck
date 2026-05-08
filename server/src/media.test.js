@@ -67,6 +67,23 @@ describe('save', () => {
     }
   });
 
+  it('maps known audio MIME types to extensions (for metronome samples)', async () => {
+    // Reuse TINY_PNG bytes — the store doesn't validate file content beyond
+    // MIME type. Real usage will have actual audio bytes.
+    const cases = [
+      ['audio/wav', '.wav'],
+      ['audio/mpeg', '.mp3'],
+      ['audio/ogg', '.ogg'],
+      ['audio/mp4', '.m4a'],
+    ];
+    for (const [mime, ext] of cases) {
+      // Distinct content per case so dedupe doesn't collapse them.
+      const buf = Buffer.concat([TINY_PNG, Buffer.from(mime)]);
+      const r = await store.save(buf, mime);
+      expect(r.url.endsWith(ext)).toBe(true);
+    }
+  });
+
   it('rejects unsupported MIME types', async () => {
     await expect(store.save(TINY_PNG, 'application/octet-stream')).rejects.toBeInstanceOf(
       MediaValidationError,

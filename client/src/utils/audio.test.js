@@ -8,7 +8,9 @@ class MockAudioContext {
     this.destination = { __dst: true };
     this.oscillators = [];
     this.gains = [];
+    this.bufferSources = [];
     this.resumed = 0;
+    this.decodedCalls = [];
   }
   createOscillator() {
     const osc = {
@@ -21,6 +23,15 @@ class MockAudioContext {
     this.oscillators.push(osc);
     return osc;
   }
+  createBufferSource() {
+    const src = {
+      buffer: null,
+      connect: vi.fn().mockReturnThis(),
+      start: vi.fn(),
+    };
+    this.bufferSources.push(src);
+    return src;
+  }
   createGain() {
     const gain = {
       gain: {
@@ -31,6 +42,11 @@ class MockAudioContext {
     };
     this.gains.push(gain);
     return gain;
+  }
+  decodeAudioData(arrayBuffer) {
+    this.decodedCalls.push(arrayBuffer);
+    // Return a fake buffer that can be assigned to bufferSource.buffer.
+    return Promise.resolve({ __decoded: true, byteLength: arrayBuffer.byteLength });
   }
   resume() {
     this.resumed += 1;
@@ -85,5 +101,95 @@ describe('createTonePlayer', () => {
       },
     });
     expect(() => player.play('beat')).not.toThrow();
+  });
+
+  // -------------------------------------------------------------------------
+  // Custom sample playback
+  // -------------------------------------------------------------------------
+
+  function fakeOkResponse(bytes = new Uint8Array([1, 2, 3]).buffer) {
+    return Promise.resolve({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(bytes),
+    });
+  }
+
+  it('plays a decoded buffer source instead of the sine tone when a sample URL is set', async () => {
+    const ctx = new MockAudioContext();
+    const fetchFn = vi.fn(() => fakeOkResponse());
+    const player = createTonePlayer({ audioContextFactory: () => ctx, fetchFn });
+
+    player.setSamples({ accent: '/media/abc.wav' });
+    // Wait for fetch + decode to settle before playing.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    player.play('accent');
+    expect(ctx.bufferSources).toHaveLength(1);
+    expect(ctx.bufferSources[0].buffer).toMatchObject({ __decoded: true });
+    // The sine tone path should NOT have been triggered.
+    expect(ctx.oscillators).toHaveLength(0);
+  });
+
+  it('falls back to the sine tone if the sample is still loading', async () => {
+    const ctx = new MockAudioContext();
+    // Never resolves — sample stays "pending"
+    const fetchFn = vi.fn(() => new Promise(() => {}));
+    const player = createTonePlayer({ audioContextFactory: () => ctx, fetchFn });
+
+    player.setSamples({ accent: '/media/slow.wav' });
+    player.play('accent');
+    expect(ctx.oscillators).toHaveLength(1); // sine tone fired
+    expect(ctx.bufferSources).toHaveLength(0);
+  });
+
+  it('falls back to the sine tone if the fetch fails', async () => {
+    const ctx = new MockAudioContext();
+    const fetchFn = vi.fn(() => Promise.resolve({ ok: false, status: 404 }));
+    const player = createTonePlayer({ audioContextFactory: () => ctx, fetchFn });
+
+    player.setSamples({ accent: '/media/missing.wav' });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    player.play('accent');
+    expect(ctx.oscillators).toHaveLength(1);
+  });
+
+  it('does not refetch the same URL on subsequent setSamples calls', async () => {
+    const ctx = new MockAudioContext();
+    const fetchFn = vi.fn(() => fakeOkResponse());
+    const player = createTonePlayer({ audioContextFactory: () => ctx, fetchFn });
+
+    player.setSamples({ accent: '/media/a.wav', beat: '/media/b.wav' });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+
+    // Re-setting the same URLs shouldn't trigger more fetches.
+    player.setSamples({ accent: '/media/a.wav', beat: '/media/b.wav' });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('reverts to the built-in tone when the URL is cleared', async () => {
+    const ctx = new MockAudioContext();
+    const fetchFn = vi.fn(() => fakeOkResponse());
+    const player = createTonePlayer({ audioContextFactory: () => ctx, fetchFn });
+
+    player.setSamples({ beat: '/media/b.wav' });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    player.play('beat');
+    expect(ctx.bufferSources).toHaveLength(1);
+
+    player.setSamples({ beat: null });
+    player.play('beat');
+    // Same context — accumulated counts. Sine tone should now have fired.
+    expect(ctx.oscillators).toHaveLength(1);
   });
 });

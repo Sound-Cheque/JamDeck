@@ -27,12 +27,21 @@ export function usePlayback() {
   const handleMessage = useCallback((msg) => {
     switch (msg?.type) {
       case 'playback:start':
-        setState({
-          state: 'playing',
-          deckId: msg.deckId,
-          slideIndex: msg.slideIndex,
-          startedAt: msg.startedAt,
-          loop: !!msg.loop,
+        setState((prev) => {
+          // Carry linkBpm forward — it persists across slide advances. Prefer
+          // a freshly-broadcast linkBpm; otherwise keep whatever the live
+          // 'link:tempo' stream gave us. Only include the key when we have a
+          // value, so non-Link sessions stay schema-clean.
+          const linkBpm = msg.linkBpm ?? prev.linkBpm ?? null;
+          const next = {
+            state: 'playing',
+            deckId: msg.deckId,
+            slideIndex: msg.slideIndex,
+            startedAt: msg.startedAt,
+            loop: !!msg.loop,
+          };
+          if (linkBpm != null) next.linkBpm = linkBpm;
+          return next;
         });
         break;
       case 'playback:slide':
@@ -43,7 +52,17 @@ export function usePlayback() {
         );
         break;
       case 'playback:stop':
-        setState(IDLE);
+        // Preserve linkBpm across stop — the Link tempo is independent of
+        // playback state and the next start will pick it up.
+        setState((prev) =>
+          prev.linkBpm != null ? { ...IDLE, linkBpm: prev.linkBpm } : IDLE,
+        );
+        break;
+      case 'link:tempo':
+        setState((prev) => ({ ...prev, linkBpm: msg.bpm }));
+        break;
+      case 'link:peers':
+        setState((prev) => ({ ...prev, linkPeers: msg.numPeers }));
         break;
       default:
         break;

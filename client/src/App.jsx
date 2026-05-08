@@ -23,8 +23,9 @@ export function App() {
   // self-originating broadcasts but simple and idempotent.
   const handleMessage = useCallback(
     (msg) => {
-      // Playback messages drive playbackState; deck messages drive deck state.
-      // The hook filters by type, so it's safe to forward everything.
+      // Playback (and link:*) messages drive playbackState; deck messages
+      // drive deck state. The hook filters by type, so forwarding everything
+      // is safe.
       playbackState.handleMessage(msg);
 
       switch (msg.type) {
@@ -45,6 +46,10 @@ export function App() {
           if (msg.deckId && msg.deckId !== selectedDeckId) {
             setSelectedDeckId(msg.deckId);
           }
+          break;
+        case 'link:tempo':
+        case 'link:peers':
+          // Forwarded to playbackState above; nothing else to do here.
           break;
         default:
           break;
@@ -76,6 +81,21 @@ export function App() {
   // it's created on the first beat, after the user's Play click satisfies
   // browser autoplay policy.
   const tonePlayer = useMemo(() => createTonePlayer(), []);
+
+  // Push the loaded deck's metronome sample URLs into the player. setSamples
+  // is idempotent for unchanged URLs, so this fires harmlessly on every render.
+  useEffect(() => {
+    const sounds = deckState.deck?.settings?.metronomeSounds ?? {};
+    tonePlayer.setSamples({
+      accent: sounds.accent ?? null,
+      beat: sounds.beat ?? null,
+    });
+  }, [
+    deckState.deck?.settings?.metronomeSounds?.accent,
+    deckState.deck?.settings?.metronomeSounds?.beat,
+    tonePlayer,
+  ]);
+
   useMetronome({
     enabled:
       isPlayingLoadedDeck && deckState.deck.settings?.timingMode === 'internal',

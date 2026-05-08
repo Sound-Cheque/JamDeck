@@ -5,10 +5,21 @@ import { join } from 'node:path';
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 const EXT_BY_MIME = {
+  // Images
   'image/png': '.png',
   'image/jpeg': '.jpg',
   'image/gif': '.gif',
   'image/webp': '.webp',
+  // Audio (metronome click samples)
+  'audio/wav': '.wav',
+  'audio/x-wav': '.wav',
+  'audio/wave': '.wav',
+  'audio/mpeg': '.mp3',
+  'audio/mp3': '.mp3',
+  'audio/ogg': '.ogg',
+  'audio/webm': '.webm',
+  'audio/mp4': '.m4a',
+  'audio/aac': '.aac',
 };
 
 export class MediaValidationError extends Error {

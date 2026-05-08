@@ -16,6 +16,7 @@ export function createServer({
   mediaDir,
   broadcast: injectedBroadcast,
   playbackController,
+  linkBridge,
 } = {}) {
   const decks = deckStore ?? createDeckStore({ dataDir: 'data/decks' });
   const resolvedMediaDir = mediaDir ?? 'data/media';
@@ -44,8 +45,17 @@ export function createServer({
       }
     });
 
+  // If a Link bridge was supplied, re-broadcast its tempo/peer events so
+  // every connected client can keep its progress / countdown calculations
+  // in sync with the live DAW tempo.
+  if (linkBridge && typeof linkBridge.on === 'function') {
+    linkBridge.on('tempo', (bpm) => broadcast({ type: 'link:tempo', bpm }));
+    linkBridge.on('peers', (numPeers) => broadcast({ type: 'link:peers', numPeers }));
+  }
+
   const playback =
-    playbackController ?? createPlaybackController({ deckStore: decks, broadcast });
+    playbackController ??
+    createPlaybackController({ deckStore: decks, broadcast, linkBridge });
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });
@@ -64,5 +74,6 @@ export function createServer({
     mediaStore: media,
     broadcast,
     playbackController: playback,
+    linkBridge,
   };
 }

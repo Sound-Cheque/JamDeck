@@ -169,6 +169,96 @@ describe('usePlayback', () => {
     expect(call[1].method).toBe('POST');
   });
 
+  it('records linkBpm from a playback:start carrying it', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ state: 'idle' }));
+    const { result } = renderHook(() => usePlayback());
+    await waitFor(() => expect(result.current.state.state).toBe('idle'));
+
+    act(() => {
+      result.current.handleMessage({
+        type: 'playback:start',
+        deckId: 'd',
+        slideIndex: 0,
+        startedAt: '2026-01-01T00:00:00.000Z',
+        loop: false,
+        linkBpm: 132,
+      });
+    });
+    expect(result.current.state.linkBpm).toBe(132);
+  });
+
+  it('updates linkBpm from a link:tempo message', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        state: 'playing',
+        deckId: 'd',
+        slideIndex: 0,
+        startedAt: '2026-01-01T00:00:00.000Z',
+        loop: false,
+        linkBpm: 120,
+      }),
+    );
+    const { result } = renderHook(() => usePlayback());
+    await waitFor(() => expect(result.current.state.linkBpm).toBe(120));
+
+    act(() => {
+      result.current.handleMessage({ type: 'link:tempo', bpm: 140 });
+    });
+    expect(result.current.state.linkBpm).toBe(140);
+    expect(result.current.state.state).toBe('playing'); // unchanged
+  });
+
+  it('records linkPeers from a link:peers message', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ state: 'idle' }));
+    const { result } = renderHook(() => usePlayback());
+    await waitFor(() => expect(result.current.state.state).toBe('idle'));
+
+    act(() => {
+      result.current.handleMessage({ type: 'link:peers', numPeers: 2 });
+    });
+    expect(result.current.state.linkPeers).toBe(2);
+  });
+
+  it('preserves linkBpm across slide advances', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ state: 'idle' }));
+    const { result } = renderHook(() => usePlayback());
+    await waitFor(() => expect(result.current.state.state).toBe('idle'));
+
+    act(() => {
+      result.current.handleMessage({ type: 'link:tempo', bpm: 132 });
+      result.current.handleMessage({
+        type: 'playback:start',
+        deckId: 'd',
+        slideIndex: 0,
+        startedAt: '2026-01-01T00:00:00.000Z',
+        loop: false,
+      });
+    });
+    expect(result.current.state.linkBpm).toBe(132);
+
+    act(() => {
+      result.current.handleMessage({
+        type: 'playback:slide',
+        slideIndex: 1,
+        startedAt: '2026-01-01T00:00:01.000Z',
+      });
+    });
+    expect(result.current.state.linkBpm).toBe(132);
+  });
+
+  it('preserves linkBpm across stop so the next start picks it up', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ state: 'idle' }));
+    const { result } = renderHook(() => usePlayback());
+    await waitFor(() => expect(result.current.state.state).toBe('idle'));
+
+    act(() => {
+      result.current.handleMessage({ type: 'link:tempo', bpm: 100 });
+      result.current.handleMessage({ type: 'playback:stop' });
+    });
+    expect(result.current.state.state).toBe('idle');
+    expect(result.current.state.linkBpm).toBe(100);
+  });
+
   it('exposes a stable handleMessage reference across renders', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ state: 'idle' }));
     const { result, rerender } = renderHook(() => usePlayback());

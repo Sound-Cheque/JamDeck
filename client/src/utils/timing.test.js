@@ -47,13 +47,31 @@ describe('slideDurationMs', () => {
     expect(slideDurationMs(slide, { timingMode: 'internal', internalBpm: 120 })).toBe(8_000);
   });
 
-  it('returns null for bars-mode slides in Link mode', () => {
+  it('returns null for bars-mode slides in Link mode without linkBpm', () => {
     expect(
       slideDurationMs(
         { duration: { unit: 'bars', value: 4 } },
         { timingMode: 'link', internalBpm: 120 },
       ),
     ).toBeNull();
+  });
+
+  it('returns ms for bars-mode slides in Link mode when linkBpm is provided', () => {
+    expect(
+      slideDurationMs(
+        { duration: { unit: 'bars', value: 4 } },
+        { timingMode: 'link', linkBpm: 120 },
+      ),
+    ).toBe(8_000);
+  });
+
+  it('ignores internalBpm in Link mode (linkBpm wins)', () => {
+    expect(
+      slideDurationMs(
+        { duration: { unit: 'bars', value: 1 } },
+        { timingMode: 'link', internalBpm: 120, linkBpm: 60 },
+      ),
+    ).toBe(4_000);
   });
 
   it('returns null for bars-mode slides without a usable BPM', () => {

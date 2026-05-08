@@ -191,6 +191,349 @@ describe('automatic slide advance', () => {
   });
 });
 
+// Helper: create a fake Link bridge whose tempo / msUntilNextBar can be
+// controlled from within tests, and whose events can be fired manually.
+function makeFakeLinkBridge({ enabled = true, bpm = 120, msUntilNextBar = 0 } = {}) {
+  const listeners = new Map(); // event -> Set<fn>
+  let _bpm = bpm;
+  let _next = msUntilNextBar;
+  let _enabled = enabled;
+  let _isPlaying = false;
+  const setIsPlayingCalls = [];
+  const bridge = {
+    isEnabled: () => _enabled,
+    getTempo: () => _bpm,
+    getNumPeers: () => 0,
+    getIsPlaying: () => _isPlaying,
+    setIsPlaying: (val) => {
+      _isPlaying = !!val;
+      setIsPlayingCalls.push(_isPlaying);
+    },
+    msUntilNextBar: () => _next,
+    on: (event, fn) => {
+      if (!listeners.has(event)) listeners.set(event, new Set());
+      listeners.get(event).add(fn);
+      return () => listeners.get(event)?.delete(fn);
+    },
+    off: (event, fn) => listeners.get(event)?.delete(fn),
+    enable: async () => { _enabled = true; },
+    disable: () => { _enabled = false; },
+    // Test helpers
+    _setBpm(newBpm) {
+      _bpm = newBpm;
+      const set = listeners.get('tempo');
+      if (set) for (const fn of set) fn(newBpm);
+    },
+    _setMsUntilNextBar(v) { _next = v; },
+    async _emitPlayState(playing) {
+      _isPlaying = !!playing;
+      const set = listeners.get('playState');
+      if (!set) return;
+      // Listeners may return a Promise (controller.onExternalPlayState does
+      // when it triggers start). Await all of them so tests can synchronize.
+      await Promise.all([...set].map((fn) => fn(_isPlaying)));
+    },
+    _setIsPlayingCalls: setIsPlayingCalls,
+  };
+  return bridge;
+}
+
+describe('Ableton Link timing', () => {
+  it('advances bars-mode slides using the live Link tempo when timingMode is "link"', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    // 2 bars at 120 BPM in 4/4 = 2 × 4 × 500ms = 4000ms
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 2 } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 2 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    broadcast.mockClear();
+
+    // Just before the 2-bar mark: still on slide 0
+    await vi.advanceTimersByTimeAsync(3_999);
+    expect(controller.getState().slideIndex).toBe(0);
+
+    // Cross the 2-bar mark: advance to slide 1
+    await vi.advanceTimersByTimeAsync(2);
+    expect(controller.getState().slideIndex).toBe(1);
+  });
+
+  it('reschedules remaining time when Link tempo changes mid-slide (bars preserved)', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    // 4 bars at 120 BPM = 8000ms; at 60 BPM the same 4 bars would be 16000ms
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 4 } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    broadcast.mockClear();
+
+    // Halfway through (4000ms = 2 bars at 120 BPM)
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(controller.getState().slideIndex).toBe(0);
+
+    // Tempo halves to 60 BPM. Bars played so far = 2; remaining 2 bars at
+    // 60 BPM = 8000ms. So advance happens 8000ms from now (12000ms total).
+    linkBridge._setBpm(60);
+
+    // Just before new boundary: still slide 0
+    await vi.advanceTimersByTimeAsync(7_999);
+    expect(controller.getState().slideIndex).toBe(0);
+
+    // Cross the new boundary: advance to slide 1
+    await vi.advanceTimersByTimeAsync(2);
+    expect(controller.getState().slideIndex).toBe(1);
+  });
+
+  it('shortens remaining time when tempo speeds up mid-slide', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 60 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    // 4 bars at 60 BPM = 16000ms
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 4 } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    broadcast.mockClear();
+
+    // Play for 8s at 60 BPM — that's 2 bars done.
+    await vi.advanceTimersByTimeAsync(8_000);
+
+    // Tempo quadruples to 240 BPM. Remaining 2 bars at 240 BPM = 2000ms.
+    linkBridge._setBpm(240);
+
+    await vi.advanceTimersByTimeAsync(1_999);
+    expect(controller.getState().slideIndex).toBe(0);
+
+    await vi.advanceTimersByTimeAsync(2);
+    expect(controller.getState().slideIndex).toBe(1);
+  });
+
+  it('quantized start delays slide 0 to the next bar boundary in Link mode', async () => {
+    // The bridge says we're 750ms away from the next bar.
+    const linkBridge = makeFakeLinkBridge({ bpm: 120, msUntilNextBar: 750 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    // Should not have broadcast yet — we're waiting for the bar boundary
+    expect(broadcast).not.toHaveBeenCalled();
+    expect(controller.getState().state).toBe('pending');
+
+    await vi.advanceTimersByTimeAsync(749);
+    expect(broadcast).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(2);
+    expect(broadcast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'playback:start', slideIndex: 0 }),
+    );
+    expect(controller.getState().state).toBe('playing');
+  });
+
+  it('quantized start can be cancelled by stop() before the bar boundary', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120, msUntilNextBar: 1_000 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    expect(controller.getState().state).toBe('pending');
+
+    controller.stop();
+    expect(controller.getState()).toEqual({ state: 'idle' });
+
+    await vi.advanceTimersByTimeAsync(2_000);
+    // Only the playback:stop from cancellation; no playback:start should fire.
+    const types = broadcast.mock.calls.map((c) => c[0].type);
+    expect(types).not.toContain('playback:start');
+  });
+
+  it('does not delay start when msUntilNextBar is 0 (already on a boundary)', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120, msUntilNextBar: 0 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    expect(broadcast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'playback:start' }),
+    );
+    expect(controller.getState().state).toBe('playing');
+  });
+
+  it('includes linkBpm in playback:start broadcast when in Link mode', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 132 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    expect(broadcast.mock.calls[0][0].linkBpm).toBe(132);
+  });
+});
+
+describe('Link transport sharing', () => {
+  it('calls linkBridge.setIsPlaying(true) on start in Link mode', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    expect(linkBridge._setIsPlayingCalls).toEqual([true]);
+  });
+
+  it('calls linkBridge.setIsPlaying(false) on stop in Link mode', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    controller.stop();
+    expect(linkBridge._setIsPlayingCalls).toEqual([true, false]);
+  });
+
+  it('does not touch linkBridge.setIsPlaying when not in Link mode', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    deck = await makeDeck({ slides: 1, durations: [10] });
+    await controller.start(deck.id);
+    controller.stop();
+    expect(linkBridge._setIsPlayingCalls).toEqual([]);
+  });
+
+  it('starts the last-played deck when an external playState=true event fires', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    // First a user-initiated start, then stop. lastDeckId is now armed.
+    await controller.start(deck.id);
+    controller.stop();
+    broadcast.mockClear();
+    linkBridge._setIsPlayingCalls.length = 0;
+
+    // External Play. start() is async (deckStore.getDeck reads from disk),
+    // so we have to flush both the microtask queue and any timers it sets.
+    await linkBridge._emitPlayState(true);
+
+    expect(controller.getState().state).toBe('playing');
+    expect(broadcast.mock.calls.some((c) => c[0].type === 'playback:start')).toBe(true);
+  });
+
+  it('does not echo setIsPlaying back when responding to external playState=true', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    // Arm lastDeckId
+    await controller.start(deck.id);
+    controller.stop();
+    linkBridge._setIsPlayingCalls.length = 0;
+
+    // External Play arrives
+    await linkBridge._emitPlayState(true);
+
+    // We should NOT have called setIsPlaying again — that would be an echo.
+    expect(linkBridge._setIsPlayingCalls).toEqual([]);
+  });
+
+  it('stops local playback when an external playState=false event fires', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    broadcast.mockClear();
+    linkBridge._setIsPlayingCalls.length = 0;
+
+    await linkBridge._emitPlayState(false);
+
+    expect(controller.getState()).toEqual({ state: 'idle' });
+    expect(broadcast.mock.calls.some((c) => c[0].type === 'playback:stop')).toBe(true);
+    // No echo — we shouldn't call setIsPlaying(false) in response to an
+    // external false (the DAW already knows it stopped).
+    expect(linkBridge._setIsPlayingCalls).toEqual([]);
+  });
+
+  it('ignores external playState=true when no deck has been armed', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    await linkBridge._emitPlayState(true);
+
+    expect(controller.getState()).toEqual({ state: 'idle' });
+    expect(broadcast).not.toHaveBeenCalled();
+  });
+
+  it('ignores external playState=true while already playing', async () => {
+    const linkBridge = makeFakeLinkBridge({ bpm: 120 });
+    controller = createPlaybackController({ deckStore, broadcast, linkBridge });
+
+    const d = await deckStore.createDeck({ name: 'D' });
+    await deckStore.updateDeck(d.id, { settings: { timingMode: 'link' } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    await deckStore.addSlide(d.id, { duration: { unit: 'bars', value: 1 } });
+    deck = await deckStore.getDeck(d.id);
+
+    await controller.start(deck.id);
+    const startCallsBefore = broadcast.mock.calls.filter(
+      (c) => c[0].type === 'playback:start',
+    ).length;
+
+    await linkBridge._emitPlayState(true);
+
+    const startCallsAfter = broadcast.mock.calls.filter(
+      (c) => c[0].type === 'playback:start',
+    ).length;
+    expect(startCallsAfter).toBe(startCallsBefore); // no extra start
+  });
+});
+
 describe('stop', () => {
   it('emits playback:stop and returns to idle', async () => {
     deck = await makeDeck({ slides: 2 });

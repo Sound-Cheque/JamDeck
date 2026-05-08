@@ -101,6 +101,99 @@ describe('DeckSettings', () => {
     expect(screen.getByRole('spinbutton', { name: /internal bpm/i })).toHaveValue(88);
   });
 
+  describe('metronome sounds', () => {
+    function makeFile(name = 'click.wav', type = 'audio/wav') {
+      return new File([new Uint8Array([1, 2, 3, 4])], name, { type });
+    }
+
+    function stubFetchOk(url = '/media/abc.wav') {
+      const fetchMock = vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ url }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      return fetchMock;
+    }
+
+    it('shows "Built-in tone" by default for both kinds', () => {
+      renderSettings();
+      const states = screen.getAllByText(/built-in tone/i);
+      expect(states.length).toBe(2);
+    });
+
+    it('uploads to /api/media and stores the returned URL on the draft', async () => {
+      const user = userEvent.setup();
+      const fetchMock = stubFetchOk('/media/accent-hash.wav');
+      const onSave = vi.fn().mockResolvedValue();
+      renderSettings({ onSave });
+
+      // Find the accent file input (the one inside the "Accent (beat 1)" row)
+      const uploadButtons = screen.getAllByText(/^upload$/i);
+      const accentInput = uploadButtons[0].parentElement.querySelector('input[type=file]');
+      await user.upload(accentInput, makeFile('accent.wav'));
+
+      // Give the upload promise a tick to settle
+      await screen.findByText(/Custom: accent-hash\.wav/);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/media',
+        expect.objectContaining({ method: 'POST' }),
+      );
+
+      // Saving should now include the new URL on settings.metronomeSounds
+      await user.click(screen.getByRole('button', { name: /save/i }));
+      const patch = onSave.mock.calls[0][0];
+      expect(patch.settings.metronomeSounds.accent).toBe('/media/accent-hash.wav');
+
+      vi.unstubAllGlobals();
+    });
+
+    it('Reset returns a kind to the built-in tone (null)', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockResolvedValue();
+      renderSettings({
+        deck: deck({ metronomeSounds: { accent: '/media/x.wav', beat: null } }),
+        onSave,
+      });
+
+      // The first row (accent) should have a Reset button
+      const resetButtons = screen.getAllByRole('button', { name: /^reset$/i });
+      expect(resetButtons.length).toBe(1);
+      await user.click(resetButtons[0]);
+
+      await user.click(screen.getByRole('button', { name: /save/i }));
+      const patch = onSave.mock.calls[0][0];
+      expect(patch.settings.metronomeSounds.accent).toBeNull();
+    });
+
+    it('shows an error if the upload fails', async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ error: 'too big' }), {
+            status: 413,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      renderSettings();
+
+      const uploadButtons = screen.getAllByText(/^upload$/i);
+      const beatInput = uploadButtons[1].parentElement.querySelector('input[type=file]');
+      await user.upload(beatInput, makeFile('big.wav'));
+
+      const alert = await screen.findByRole('alert');
+      expect(alert.textContent).toMatch(/too big/);
+
+      vi.unstubAllGlobals();
+    });
+  });
+
   describe('deck name', () => {
     it('renders a deck name input pre-filled with the current name', () => {
       renderSettings({ deck: { ...deck(), name: 'Original' } });

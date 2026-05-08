@@ -9,7 +9,13 @@ const TICK_MS = 50;
 export function PlaybackView({ deck, playback }) {
   const now = useNow(TICK_MS);
   const slide = deck?.slides?.[playback?.slideIndex ?? -1] ?? null;
-  const durationMs = slide ? slideDurationMs(slide, deck?.settings) : null;
+  // Splice the live Link tempo into settings so bars-mode under Link can
+  // resolve to ms for the progress ring / countdown.
+  const effectiveSettings =
+    playback?.linkBpm != null
+      ? { ...(deck?.settings ?? {}), linkBpm: playback.linkBpm }
+      : deck?.settings;
+  const durationMs = slide ? slideDurationMs(slide, effectiveSettings) : null;
   const { fraction, remainingMs } = computeProgress({
     startedAt: playback?.startedAt,
     durationMs: durationMs ?? 0,

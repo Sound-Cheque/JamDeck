@@ -50,9 +50,15 @@ describe('slideDurationMs', () => {
     expect(slideDurationMs(slide, { timingMode: 'internal', internalBpm: 60 })).toBe(16_000);
   });
 
-  it('returns null for bars-mode slides in Link mode (handled by the Link bridge)', () => {
+  it('returns null for bars-mode slides in Link mode without linkBpm', () => {
     const slide = { duration: { unit: 'bars', value: 4 } };
     expect(slideDurationMs(slide, { timingMode: 'link', internalBpm: 120 })).toBeNull();
+  });
+
+  it('resolves bars-mode in Link mode using settings.linkBpm', () => {
+    const slide = { duration: { unit: 'bars', value: 4 } };
+    expect(slideDurationMs(slide, { timingMode: 'link', linkBpm: 120 })).toBe(8_000);
+    expect(slideDurationMs(slide, { timingMode: 'link', linkBpm: 60 })).toBe(16_000);
   });
 
   it('returns null for bars-mode slides without a usable BPM', () => {

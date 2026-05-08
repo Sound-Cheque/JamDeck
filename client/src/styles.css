@@ -477,6 +477,53 @@ ul {
   border-color: var(--accent);
 }
 
+.deck-settings__sound-row {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content max-content;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) 0;
+}
+
+.deck-settings__sound-label {
+  font-weight: 600;
+}
+
+.deck-settings__sound-state {
+  font-size: 0.85em;
+  color: var(--muted, #666);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deck-settings__sound-upload {
+  cursor: pointer;
+  padding: 0.25em 0.6em;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 4px;
+  background: var(--surface, #f5f5f5);
+}
+
+.deck-settings__sound-upload input[type="file"] {
+  display: none;
+}
+
+.deck-settings__sound-reset {
+  padding: 0.25em 0.6em;
+  font-size: 0.85em;
+}
+
+.deck-settings__sound-status,
+.deck-settings__sound-error {
+  font-size: 0.85em;
+  margin-top: var(--space-1);
+}
+
+.deck-settings__sound-error {
+  color: var(--danger, #c00);
+}
+
 /* ─── Slide editor (right) ───────────────────────────────────────────────── */
 
 .main-panel {

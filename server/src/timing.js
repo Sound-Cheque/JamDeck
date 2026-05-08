@@ -17,8 +17,10 @@ export function msToBars(ms, bpm, beatsPerBar = DEFAULT_BEATS_PER_BAR) {
 }
 
 // Resolve a slide's duration to milliseconds in the given deck-settings
-// context. Returns null when we can't auto-advance (e.g. bars-mode under
-// Link timing — the Link bridge will drive that path in a later commit).
+// context. Returns null when we can't auto-advance from these settings alone
+// — e.g. bars-mode under Link timing without a known live tempo. The
+// playback controller / client can pass `settings.linkBpm` (current Link
+// tempo) to resolve Link bars-mode to ms.
 export function slideDurationMs(slide, settings) {
   const unit = slide?.duration?.unit;
   const value = slide?.duration?.value;
@@ -30,7 +32,10 @@ export function slideDurationMs(slide, settings) {
     if (mode === 'internal' && Number.isFinite(settings?.internalBpm) && settings.internalBpm > 0) {
       return barsToMs(value, settings.internalBpm);
     }
-    return null; // 'link' or anything else → can't auto-advance from settings alone
+    if (mode === 'link' && Number.isFinite(settings?.linkBpm) && settings.linkBpm > 0) {
+      return barsToMs(value, settings.linkBpm);
+    }
+    return null;
   }
   return null;
 }
