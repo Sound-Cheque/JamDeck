@@ -4,19 +4,23 @@ import { SlidePanel } from './components/SlidePanel.jsx';
 import { SlideEditor } from './components/SlideEditor.jsx';
 import { PlaybackView } from './components/PlaybackView.jsx';
 import { TopBar } from './components/TopBar.jsx';
+import { ShareModal } from './components/ShareModal.jsx';
 import { useDecks } from './hooks/useDecks.js';
 import { useDeck } from './hooks/useDeck.js';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { usePlayback } from './hooks/usePlayback.js';
 import { useMetronome } from './hooks/useMetronome.js';
+import { useShare } from './hooks/useShare.js';
 import { createTonePlayer } from './utils/audio.js';
 
 export function App() {
   const decksState = useDecks();
   const [selectedDeckId, setSelectedDeckId] = useState(null);
   const [selectedSlideId, setSelectedSlideId] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const deckState = useDeck(selectedDeckId);
   const playbackState = usePlayback();
+  const shareState = useShare();
 
   // Live sync — react to mutations broadcast by the server. We refresh state
   // from REST rather than applying message payloads directly; redundant with
@@ -118,6 +122,16 @@ export function App() {
           await deckState.update({ settings: { loop: next } });
           await decksState.refresh();
         }}
+        onShare={() => setShareOpen(true)}
+      />
+      <ShareModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        status={shareState.status}
+        busy={shareState.busy}
+        error={shareState.error}
+        onStart={() => shareState.start().catch(() => {})}
+        onStop={() => shareState.stop()}
       />
       <main className="layout">
         <DeckPanel

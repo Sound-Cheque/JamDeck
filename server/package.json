@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ngrok/ngrok": "^1.7.0",
     "abletonlink": "^0.2.0-beta.0",
     "express": "^5.0.0",
     "multer": "^2.0.0",

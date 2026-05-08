@@ -72,6 +72,15 @@ export function createPlaybackController({
     return { ...state };
   }
 
+  // Returns the slide id of the currently-playing slide, or null when idle /
+  // pending. Used by the deck router to enforce the current-slide-lock that
+  // mobile clients respect (the "🔒 cannot edit the live slide" rule).
+  function getActiveSlideId() {
+    if (state.state !== 'playing') return null;
+    if (!activeDeck) return null;
+    return activeDeck.slides?.[state.slideIndex]?.id ?? null;
+  }
+
   async function start(deckId, fromExternal = false) {
     const deck = await deckStore.getDeck(deckId); // throws DeckNotFoundError
     if (!deck.slides || deck.slides.length === 0) {
@@ -262,5 +271,5 @@ export function createPlaybackController({
     slideBarsLeft = null;
   }
 
-  return { getState, start, stop };
+  return { getState, getActiveSlideId, start, stop };
 }

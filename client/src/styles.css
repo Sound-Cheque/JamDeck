@@ -818,3 +818,338 @@ ul {
   font-size: 14px;
   color: var(--text-muted);
 }
+
+/* ─── Share modal ─────────────────────────────────────────────────────── */
+
+.share-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+}
+
+.share-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.share-modal__panel {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  padding: var(--space-4);
+  min-width: 320px;
+  max-width: 420px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.share-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.share-modal__close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.share-modal__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.share-modal__qr {
+  background: white;
+  padding: var(--space-2);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 4px;
+}
+
+.share-modal__url {
+  word-break: break-all;
+  text-align: center;
+  font-size: 0.85em;
+}
+
+.share-modal__primary,
+.share-modal__secondary {
+  padding: 0.6em 1.2em;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.share-modal__primary {
+  background: var(--accent);
+  color: white;
+  border: 1px solid var(--accent);
+}
+
+.share-modal__secondary {
+  background: white;
+  border: 1px solid var(--border, #ccc);
+}
+
+.share-modal__error {
+  color: var(--danger, #c00);
+  font-size: 0.85em;
+  margin-top: var(--space-2);
+}
+
+.top-bar__share {
+  margin-left: var(--space-2);
+}
+
+/* ─── Mobile UI ────────────────────────────────────────────────────────── */
+
+.mobile-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #fafafa);
+}
+
+.mobile-app__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: white;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.mobile-app__header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  flex: 1;
+}
+
+.mobile-app__back {
+  background: none;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  padding: 0 var(--space-2);
+  cursor: pointer;
+}
+
+.mobile-app__deck-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mobile-app__deck-button {
+  width: 100%;
+  text-align: left;
+  background: white;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  padding: var(--space-3);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-app__deck-name {
+  font-weight: 600;
+  font-size: 1.05em;
+}
+
+.mobile-app__deck-meta {
+  color: var(--text-muted, #666);
+  font-size: 0.85em;
+}
+
+.mobile-app__slide-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mobile-app__slide-row {
+  background: white;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mobile-app__slide-row[aria-current="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.mobile-app__slide-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 500;
+}
+
+.mobile-app__edit-toggle {
+  background: none;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 4px;
+  padding: 0.25em 0.6em;
+  cursor: pointer;
+  font-size: 1.1em;
+}
+
+.mobile-app__slide-thumb {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: block;
+  border-radius: 4px;
+  overflow: hidden;
+  background: white;
+}
+
+.mobile-app__slide-thumb canvas,
+.mobile-app__slide-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.mobile-app__slide-thumb:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mobile-app__add-slide {
+  margin: var(--space-3);
+  padding: var(--space-3);
+  background: white;
+  border: 1px dashed var(--border, #ccc);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.mobile-app__error {
+  margin: var(--space-3);
+  color: var(--danger, #c00);
+}
+
+/* Mobile slide editor */
+
+.mobile-slide-editor {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #fafafa);
+}
+
+.mobile-slide-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  background: white;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  position: sticky;
+  top: 0;
+}
+
+.mobile-slide-editor__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.mobile-slide-editor__cancel,
+.mobile-slide-editor__send {
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  border: 1px solid var(--border, #ccc);
+  background: white;
+  cursor: pointer;
+}
+
+.mobile-slide-editor__send {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.mobile-slide-editor__preview {
+  padding: var(--space-3);
+  display: flex;
+  justify-content: center;
+}
+
+.mobile-slide-editor__preview .slide-thumb {
+  width: 240px;
+  height: 180px;
+}
+
+.mobile-slide-editor__duration,
+.mobile-slide-editor__image {
+  margin: var(--space-3);
+  padding: var(--space-3);
+  background: white;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+}
+
+.mobile-slide-editor__duration {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.mobile-slide-editor__duration input,
+.mobile-slide-editor__duration select {
+  padding: 0.5em;
+  font-size: 1em;
+}
+
+.mobile-slide-editor__image-preview {
+  width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  margin-bottom: var(--space-2);
+}
+
+.mobile-slide-editor__image-upload {
+  display: inline-block;
+  padding: 0.5em 1em;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+.mobile-slide-editor__image-upload input[type="file"] {
+  display: none;
+}
+
+.mobile-slide-editor__error {
+  color: var(--danger, #c00);
+  margin: var(--space-3);
+}

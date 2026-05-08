@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { createDeckStore } from './decks.js';
 import { createMediaStore } from './media.js';
 import { createLinkBridge } from './link.js';
+import { createShareController, defaultNgrokTunnelFactory } from './share.js';
 import { createServer } from './server.js';
 
 // Resolve data paths against the project root, not process.cwd(). This file
@@ -28,7 +29,18 @@ linkBridge.on('error', (err) => {
   console.warn(`[jam-deck] link bridge error: ${err.message}`);
 });
 
-const { httpServer } = createServer({ deckStore, mediaStore, mediaDir, linkBridge });
+const shareController = createShareController({
+  tunnelFactory: defaultNgrokTunnelFactory,
+  port: PORT,
+});
+
+const { httpServer } = createServer({
+  deckStore,
+  mediaStore,
+  mediaDir,
+  linkBridge,
+  shareController,
+});
 
 if (LINK_ENABLED) {
   linkBridge.enable().then(() => {

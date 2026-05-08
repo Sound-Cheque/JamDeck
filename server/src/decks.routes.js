@@ -1,8 +1,36 @@
 import { Router } from 'express';
 import { DeckNotFoundError, SlideNotFoundError } from './decks.js';
 
-export function createDeckRouter(deckStore, broadcast = () => {}) {
+// Returns a guard function that returns null when the action is allowed and
+// an { status, error } object when the current-slide lock applies. When no
+// playbackController is supplied, every action is allowed (back-compat for
+// tests that don't wire one in).
+function makeLockGuard(playbackController) {
+  return function guard({ deckId, slideId = null, scope = 'slide' } = {}) {
+    if (!playbackController) return null;
+    const state = playbackController.getState?.();
+    if (!state || state.state !== 'playing') return null;
+    if (state.deckId !== deckId) return null;
+    if (scope === 'deck') {
+      return {
+        status: 409,
+        error: 'Cannot delete a deck that is currently playing',
+      };
+    }
+    const activeSlideId = playbackController.getActiveSlideId?.();
+    if (slideId && activeSlideId && slideId === activeSlideId) {
+      return {
+        status: 409,
+        error: 'Slide is locked: it is currently playing',
+      };
+    }
+    return null;
+  };
+}
+
+export function createDeckRouter(deckStore, broadcast = () => {}, playbackController = null) {
   const router = Router();
+  const lock = makeLockGuard(playbackController);
 
   router.get('/', async (_req, res, next) => {
     try {
@@ -45,6 +73,8 @@ export function createDeckRouter(deckStore, broadcast = () => {}) {
   });
 
   router.delete('/:id', async (req, res, next) => {
+    const blocked = lock({ deckId: req.params.id, scope: 'deck' });
+    if (blocked) return res.status(blocked.status).json({ error: blocked.error });
     try {
       await deckStore.deleteDeck(req.params.id);
       res.status(204).end();
@@ -95,6 +125,8 @@ export function createDeckRouter(deckStore, broadcast = () => {}) {
   });
 
   router.patch('/:id/slides/:slideId', async (req, res, next) => {
+    const blocked = lock({ deckId: req.params.id, slideId: req.params.slideId });
+    if (blocked) return res.status(blocked.status).json({ error: blocked.error });
     try {
       const deck = await deckStore.updateSlide(
         req.params.id,
@@ -109,6 +141,8 @@ export function createDeckRouter(deckStore, broadcast = () => {}) {
   });
 
   router.delete('/:id/slides/:slideId', async (req, res, next) => {
+    const blocked = lock({ deckId: req.params.id, slideId: req.params.slideId });
+    if (blocked) return res.status(blocked.status).json({ error: blocked.error });
     try {
       const deck = await deckStore.deleteSlide(req.params.id, req.params.slideId);
       res.json(deck);

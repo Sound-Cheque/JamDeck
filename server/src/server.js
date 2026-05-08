@@ -7,6 +7,7 @@ import { createMediaStore } from './media.js';
 import { createMediaRouter } from './media.routes.js';
 import { createPlaybackController } from './playback.js';
 import { createPlaybackRouter } from './playback.routes.js';
+import { createShareRouter } from './share.routes.js';
 
 const WS_OPEN = 1; // ws library readyState constant
 
@@ -17,6 +18,7 @@ export function createServer({
   broadcast: injectedBroadcast,
   playbackController,
   linkBridge,
+  shareController = null,
 } = {}) {
   const decks = deckStore ?? createDeckStore({ dataDir: 'data/decks' });
   const resolvedMediaDir = mediaDir ?? 'data/media';
@@ -61,9 +63,12 @@ export function createServer({
     res.json({ ok: true });
   });
 
-  app.use('/api/decks', createDeckRouter(decks, broadcast));
+  app.use('/api/decks', createDeckRouter(decks, broadcast, playback));
   app.use('/api/media', createMediaRouter(media));
   app.use('/api/playback', createPlaybackRouter(playback));
+  if (shareController) {
+    app.use('/api/share', createShareRouter(shareController));
+  }
   app.use('/media', express.static(resolvedMediaDir));
 
   return {
@@ -75,5 +80,6 @@ export function createServer({
     broadcast,
     playbackController: playback,
     linkBridge,
+    shareController,
   };
 }

@@ -40,6 +40,27 @@ describe('initial state', () => {
   it('reports idle before anything starts', () => {
     expect(controller.getState()).toEqual({ state: 'idle' });
   });
+
+  it('getActiveSlideId returns null while idle', () => {
+    expect(controller.getActiveSlideId()).toBeNull();
+  });
+});
+
+describe('getActiveSlideId', () => {
+  it('returns the playing slide id while playing', async () => {
+    deck = await makeDeck({ slides: 2, durations: [5, 5] });
+    await controller.start(deck.id);
+    expect(controller.getActiveSlideId()).toBe(deck.slides[0].id);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(controller.getActiveSlideId()).toBe(deck.slides[1].id);
+  });
+
+  it('returns null after stop', async () => {
+    deck = await makeDeck({ slides: 1 });
+    await controller.start(deck.id);
+    controller.stop();
+    expect(controller.getActiveSlideId()).toBeNull();
+  });
 });
 
 describe('start', () => {

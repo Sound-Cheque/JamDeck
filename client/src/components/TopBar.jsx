@@ -8,7 +8,7 @@ function isTypingTarget(target) {
   return false;
 }
 
-export function TopBar({ deck, playbackState, onStart, onStop, onToggleLoop }) {
+export function TopBar({ deck, playbackState, onStart, onStop, onToggleLoop, onShare }) {
   const isPlaying = playbackState?.state === 'playing';
   const canPlay = !!deck && deck.slides?.length > 0;
   const loopOn = !!deck?.settings?.loop;
@@ -67,6 +67,17 @@ export function TopBar({ deck, playbackState, onStart, onStop, onToggleLoop }) {
         >
           ⟳ Loop
         </button>
+
+        {onShare && (
+          <button
+            type="button"
+            className="top-bar__share"
+            aria-label="Share with phones"
+            onClick={() => onShare()}
+          >
+            📱 Share
+          </button>
+        )}
       </div>
     </header>
   );
