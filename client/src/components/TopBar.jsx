@@ -8,7 +8,16 @@ function isTypingTarget(target) {
   return false;
 }
 
-export function TopBar({ deck, playbackState, onStart, onStop, onToggleLoop, onShare }) {
+export function TopBar({
+  deck,
+  playbackState,
+  onStart,
+  onStop,
+  onToggleLoop,
+  onShare,
+  onFullscreen,
+  onSettings,
+}) {
   const isPlaying = playbackState?.state === 'playing';
   const canPlay = !!deck && deck.slides?.length > 0;
   const loopOn = !!deck?.settings?.loop;
@@ -68,6 +77,17 @@ export function TopBar({ deck, playbackState, onStart, onStop, onToggleLoop, onS
           ⟳ Loop
         </button>
 
+        {onFullscreen && (
+          <button
+            type="button"
+            className="top-bar__fullscreen"
+            aria-label="Fullscreen"
+            onClick={() => onFullscreen()}
+          >
+            ⛶ Fullscreen
+          </button>
+        )}
+
         {onShare && (
           <button
             type="button"
@@ -76,6 +96,17 @@ export function TopBar({ deck, playbackState, onStart, onStop, onToggleLoop, onS
             onClick={() => onShare()}
           >
             📱 Share
+          </button>
+        )}
+
+        {onSettings && (
+          <button
+            type="button"
+            className="top-bar__settings"
+            aria-label="App settings"
+            onClick={() => onSettings()}
+          >
+            ⚙
           </button>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DeckSettings } from './DeckSettings.jsx';
 import { SlideThumbnail } from './SlideThumbnail.jsx';
+import { reorderIds } from '../utils/reorder.js';
 
 function describeDuration(duration) {
   if (!duration) return '';
@@ -16,10 +17,14 @@ export function SlidePanel({
   onUpdate,
   onAddSlide,
   onAddImageSlide,
+  onAddVideoSlide,
   onDeleteSlide,
   onSelectSlide,
+  onReorderSlides,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [draggingId, setDraggingId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
 
   let body = null;
   if (loading) {
@@ -61,8 +66,48 @@ export function SlidePanel({
           <ul className="slide-panel__list">
             {deck.slides.map((slide, i) => {
               const num = i + 1;
+              const isDragging = draggingId === slide.id;
+              const isDragOver = dragOverId === slide.id && draggingId && draggingId !== slide.id;
               return (
-                <li key={slide.id} className="slide-panel__item">
+                <li
+                  key={slide.id}
+                  className={
+                    'slide-panel__item' +
+                    (isDragging ? ' slide-panel__item--dragging' : '') +
+                    (isDragOver ? ' slide-panel__item--drag-over' : '')
+                  }
+                  draggable={!!onReorderSlides}
+                  onDragStart={(e) => {
+                    setDraggingId(slide.id);
+                    // Some browsers require setData() for the drag to "stick".
+                    try { e.dataTransfer?.setData?.('text/plain', slide.id); } catch { /* noop */ }
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => {
+                    if (!draggingId) return;
+                    e.preventDefault(); // allow drop
+                    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                    if (dragOverId !== slide.id) setDragOverId(slide.id);
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverId === slide.id) setDragOverId(null);
+                  }}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    const fromId = draggingId;
+                    setDraggingId(null);
+                    setDragOverId(null);
+                    if (!fromId || !onReorderSlides || fromId === slide.id) return;
+                    const ids = deck.slides.map((s) => s.id);
+                    const next = reorderIds(ids, fromId, slide.id);
+                    if (next.join() === ids.join()) return;
+                    await onReorderSlides(next);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingId(null);
+                    setDragOverId(null);
+                  }}
+                >
                   <button
                     type="button"
                     className="slide-panel__select"
@@ -105,6 +150,16 @@ export function SlidePanel({
           >
             + Add Image
           </button>
+          {onAddVideoSlide && (
+            <button
+              type="button"
+              className="slide-panel__add slide-panel__add--video"
+              aria-label="Add video"
+              onClick={() => onAddVideoSlide()}
+            >
+              + Add Video
+            </button>
+          )}
         </div>
       </>
     );

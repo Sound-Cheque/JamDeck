@@ -1,5 +1,6 @@
 import { CanvasEditor } from './CanvasEditor.jsx';
 import { ImageSlideEditor } from './ImageSlideEditor.jsx';
+import { VideoSlideEditor } from './VideoSlideEditor.jsx';
 
 export function SlideEditor({ slide, onUpdate }) {
   if (!slide) {
@@ -12,6 +13,10 @@ export function SlideEditor({ slide, onUpdate }) {
 
   if (slide.type === 'image') {
     return <ImageSlideEditor slide={slide} onUpdate={onUpdate} />;
+  }
+
+  if (slide.type === 'video') {
+    return <VideoSlideEditor slide={slide} onUpdate={onUpdate} />;
   }
 
   return <p className="slide-editor__hint">Unknown slide type: {slide.type}</p>;

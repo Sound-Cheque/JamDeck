@@ -20,6 +20,11 @@ const EXT_BY_MIME = {
   'audio/webm': '.webm',
   'audio/mp4': '.m4a',
   'audio/aac': '.aac',
+  // Video (slide content)
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'video/quicktime': '.mov',
+  'video/ogg': '.ogv',
 };
 
 export class MediaValidationError extends Error {

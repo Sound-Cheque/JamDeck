@@ -36,12 +36,23 @@ describe('SlideEditor', () => {
     expect(screen.getByRole('img')).toHaveAttribute('src', '/media/abc.png');
   });
 
-  it('renders a placeholder for unknown slide types', () => {
+  it('routes video slides to VideoSlideEditor', () => {
     const slide = {
       id: 's1',
       type: 'video',
       duration: { unit: 'seconds', value: 30 },
       content: { src: 'foo.mp4' },
+    };
+    const { container } = render(<SlideEditor slide={slide} onUpdate={vi.fn()} />);
+    expect(container.querySelector('.video-slide-editor')).not.toBeNull();
+  });
+
+  it('renders a placeholder for unknown slide types', () => {
+    const slide = {
+      id: 's1',
+      type: 'spreadsheet', // not a recognized type
+      duration: { unit: 'seconds', value: 30 },
+      content: {},
     };
     render(<SlideEditor slide={slide} onUpdate={vi.fn()} />);
     expect(screen.getByText(/unknown slide type/i)).toBeInTheDocument();

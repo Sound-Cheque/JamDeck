@@ -53,6 +53,31 @@ export function SlideRenderer({ slide }) {
     );
   }
 
+  if (slide.type === 'video') {
+    if (!slide.content?.src) {
+      return (
+        <div className="slide-renderer">
+          <div className="slide-renderer__placeholder">No video uploaded yet</div>
+        </div>
+      );
+    }
+    // Autoplay during playback. Muted to satisfy autoplay policy on the
+    // host browser without forcing a click. `key` on src makes the element
+    // remount on slide change, restarting the video from t=0.
+    return (
+      <div className="slide-renderer">
+        <video
+          key={slide.content.src}
+          src={slide.content.src}
+          autoPlay
+          muted
+          playsInline
+          loop={false}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="slide-renderer">
       <div className="slide-renderer__placeholder">Unsupported slide: {slide.type}</div>

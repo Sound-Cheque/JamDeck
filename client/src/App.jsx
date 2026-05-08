@@ -5,12 +5,14 @@ import { SlideEditor } from './components/SlideEditor.jsx';
 import { PlaybackView } from './components/PlaybackView.jsx';
 import { TopBar } from './components/TopBar.jsx';
 import { ShareModal } from './components/ShareModal.jsx';
+import { AppSettingsModal } from './components/AppSettingsModal.jsx';
 import { useDecks } from './hooks/useDecks.js';
 import { useDeck } from './hooks/useDeck.js';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { usePlayback } from './hooks/usePlayback.js';
 import { useMetronome } from './hooks/useMetronome.js';
 import { useShare } from './hooks/useShare.js';
+import { useAppSettings } from './hooks/useAppSettings.js';
 import { createTonePlayer } from './utils/audio.js';
 
 export function App() {
@@ -18,9 +20,11 @@ export function App() {
   const [selectedDeckId, setSelectedDeckId] = useState(null);
   const [selectedSlideId, setSelectedSlideId] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [appSettingsOpen, setAppSettingsOpen] = useState(false);
   const deckState = useDeck(selectedDeckId);
   const playbackState = usePlayback();
   const shareState = useShare();
+  const appSettingsState = useAppSettings();
 
   // Live sync — react to mutations broadcast by the server. We refresh state
   // from REST rather than applying message payloads directly; redundant with
@@ -81,6 +85,29 @@ export function App() {
     deckState.deck &&
     playbackState.state.deckId === deckState.deck.id;
 
+  // Apply theme as a `data-theme` attribute on <html> so CSS variables can
+  // switch by `[data-theme="dark"]`. 'auto' leaves the attribute off and
+  // lets prefers-color-scheme media queries take over.
+  useEffect(() => {
+    const root = document.documentElement;
+    const t = appSettingsState.settings.theme;
+    if (t === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', t);
+  }, [appSettingsState.settings.theme]);
+
+  // Fullscreen handler: opens a popped-out playback window or fullscreens
+  // the host UI in place, depending on the user's app setting.
+  const handleFullscreen = useCallback(() => {
+    const mode = appSettingsState.settings.fullscreenMode;
+    if (mode === 'window') {
+      window.open('/?playback=1', 'jam-deck-playback', 'popup,width=1280,height=800');
+    } else if (typeof document.documentElement.requestFullscreen === 'function') {
+      document.documentElement.requestFullscreen().catch(() => {
+        /* user denied or already fullscreen — ignore */
+      });
+    }
+  }, [appSettingsState.settings.fullscreenMode]);
+
   // One tone player for the lifetime of the app. AudioContext stays lazy —
   // it's created on the first beat, after the user's Play click satisfies
   // browser autoplay policy.
@@ -123,6 +150,14 @@ export function App() {
           await decksState.refresh();
         }}
         onShare={() => setShareOpen(true)}
+        onFullscreen={handleFullscreen}
+        onSettings={() => setAppSettingsOpen(true)}
+      />
+      <AppSettingsModal
+        open={appSettingsOpen}
+        settings={appSettingsState.settings}
+        onChange={appSettingsState.setSettings}
+        onClose={() => setAppSettingsOpen(false)}
       />
       <ShareModal
         open={shareOpen}
@@ -175,12 +210,25 @@ export function App() {
             if (last) setSelectedSlideId(last.id);
             await decksState.refresh();
           }}
+          onAddVideoSlide={async () => {
+            const updated = await deckState.addSlide({
+              type: 'video',
+              content: { src: null },
+            });
+            const last = updated.slides[updated.slides.length - 1];
+            if (last) setSelectedSlideId(last.id);
+            await decksState.refresh();
+          }}
           onDeleteSlide={async (slideId) => {
             await deckState.deleteSlide(slideId);
             if (slideId === selectedSlideId) setSelectedSlideId(null);
             await decksState.refresh();
           }}
           onSelectSlide={setSelectedSlideId}
+          onReorderSlides={async (orderIds) => {
+            await deckState.reorderSlides(orderIds);
+            await decksState.refresh();
+          }}
         />
         <section className="main-panel" aria-label="Slide editor">
           {isPlayingLoadedDeck ? (

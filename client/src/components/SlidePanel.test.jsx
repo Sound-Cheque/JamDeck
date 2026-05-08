@@ -37,6 +37,7 @@ function renderPanel(props = {}) {
       onAddImageSlide={props.onAddImageSlide ?? vi.fn()}
       onDeleteSlide={props.onDeleteSlide ?? vi.fn()}
       onSelectSlide={props.onSelectSlide ?? vi.fn()}
+      onReorderSlides={props.onReorderSlides}
     />,
   );
 }
@@ -185,6 +186,77 @@ describe('SlidePanel', () => {
     it('does not show the empty-state placeholder when slides exist', () => {
       renderPanel({ deck: deck({ slides }) });
       expect(screen.queryByText(/no slides yet/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('drag-to-reorder', () => {
+    const threeSlides = [
+      slide({ id: 's1' }),
+      slide({ id: 's2' }),
+      slide({ id: 's3' }),
+    ];
+
+    function findRow(id) {
+      // Each row's <li> wraps the [Select slide N] button — easiest path is
+      // to climb from the button up to its <li> ancestor.
+      const idx = threeSlides.findIndex((s) => s.id === id);
+      const btn = screen.getByRole('button', { name: `Select slide ${idx + 1}` });
+      return btn.closest('li');
+    }
+
+    function fakeDataTransfer() {
+      const store = new Map();
+      return {
+        effectAllowed: '',
+        dropEffect: '',
+        setData: (k, v) => store.set(k, v),
+        getData: (k) => store.get(k) ?? '',
+      };
+    }
+
+    it('rows are draggable when onReorderSlides is supplied', () => {
+      renderPanel({ deck: deck({ slides: threeSlides }), onReorderSlides: vi.fn() });
+      const row = findRow('s1');
+      expect(row.getAttribute('draggable')).toBe('true');
+    });
+
+    it('rows are NOT draggable when onReorderSlides is omitted', () => {
+      renderPanel({ deck: deck({ slides: threeSlides }) });
+      const row = findRow('s1');
+      // React leaves draggable={false} → renders attribute as "false"
+      expect(row.getAttribute('draggable')).toBe('false');
+    });
+
+    it('drag-and-drop calls onReorderSlides with the new id order', async () => {
+      const onReorderSlides = vi.fn().mockResolvedValue();
+      renderPanel({ deck: deck({ slides: threeSlides }), onReorderSlides });
+
+      const { fireEvent } = await import('@testing-library/react');
+      const fromRow = findRow('s1');
+      const toRow = findRow('s3');
+      const dt = fakeDataTransfer();
+
+      fireEvent.dragStart(fromRow, { dataTransfer: dt });
+      fireEvent.dragOver(toRow, { dataTransfer: dt });
+      fireEvent.drop(toRow, { dataTransfer: dt });
+
+      expect(onReorderSlides).toHaveBeenCalledTimes(1);
+      // 's1' moved to 's3's slot — pushes s3 down: ['s2','s1','s3']
+      expect(onReorderSlides).toHaveBeenCalledWith(['s2', 's1', 's3']);
+    });
+
+    it('dropping on the same row is a no-op', async () => {
+      const onReorderSlides = vi.fn();
+      renderPanel({ deck: deck({ slides: threeSlides }), onReorderSlides });
+
+      const { fireEvent } = await import('@testing-library/react');
+      const row = findRow('s2');
+      const dt = fakeDataTransfer();
+      fireEvent.dragStart(row, { dataTransfer: dt });
+      fireEvent.dragOver(row, { dataTransfer: dt });
+      fireEvent.drop(row, { dataTransfer: dt });
+
+      expect(onReorderSlides).not.toHaveBeenCalled();
     });
   });
 });

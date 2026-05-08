@@ -67,6 +67,19 @@ describe('save', () => {
     }
   });
 
+  it('maps known video MIME types to extensions', async () => {
+    const cases = [
+      ['video/mp4', '.mp4'],
+      ['video/webm', '.webm'],
+      ['video/quicktime', '.mov'],
+    ];
+    for (const [mime, ext] of cases) {
+      const buf = Buffer.concat([TINY_PNG, Buffer.from(`v-${mime}`)]);
+      const r = await store.save(buf, mime);
+      expect(r.url.endsWith(ext)).toBe(true);
+    }
+  });
+
   it('maps known audio MIME types to extensions (for metronome samples)', async () => {
     // Reuse TINY_PNG bytes — the store doesn't validate file content beyond
     // MIME type. Real usage will have actual audio bytes.

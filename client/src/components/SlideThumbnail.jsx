@@ -60,6 +60,24 @@ export function SlideThumbnail({ slide }) {
     );
   }
 
+  if (slide.type === 'video') {
+    // Use a muted, paused <video> with preload="metadata" — the browser
+    // grabs just enough to render the first frame, which makes a passable
+    // thumbnail without needing a server-side poster generator.
+    if (!slide.content?.src) {
+      return (
+        <span className="slide-thumb" aria-hidden="true">
+          <span className="slide-thumb__placeholder">🎬</span>
+        </span>
+      );
+    }
+    return (
+      <span className="slide-thumb" aria-hidden="true">
+        <video src={slide.content.src} muted preload="metadata" />
+      </span>
+    );
+  }
+
   return (
     <span className="slide-thumb" aria-hidden="true">
       <span className="slide-thumb__placeholder">?</span>
