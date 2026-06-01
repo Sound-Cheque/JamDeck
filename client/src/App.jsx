@@ -231,6 +231,7 @@ export function App() {
               await decksState.refresh();
               return updated;
             }}
+            onUpdateSlide={(slideId, patch) => deckState.updateSlide(slideId, patch)}
             onAddSlide={async () => {
               const updated = await deckState.addSlide();
               const last = updated.slides[updated.slides.length - 1];

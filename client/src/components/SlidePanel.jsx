@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DeckSettings } from './DeckSettings.jsx';
 import { SlideThumbnail } from './SlideThumbnail.jsx';
 import { reorderIds } from '../utils/reorder.js';
@@ -9,12 +9,79 @@ function describeDuration(duration) {
   return unit === 'bars' ? `${value} bar${value === 1 ? '' : 's'}` : `${value}s`;
 }
 
+function DurationField({ slide, onUpdateSlide }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
+  if (!slide.duration) return null;
+
+  const { unit, value } = slide.duration;
+  const unitLabel = unit === 'bars' ? (value === 1 ? 'bar' : 'bars') : 's';
+
+  function startEdit(e) {
+    e.stopPropagation();
+    setDraft(String(value));
+    setEditing(true);
+  }
+
+  function commit() {
+    const num = parseFloat(draft);
+    if (!isNaN(num) && num > 0) {
+      onUpdateSlide(slide.id, { duration: { unit, value: num } });
+    }
+    setEditing(false);
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') setEditing(false);
+    e.stopPropagation();
+  }
+
+  if (editing) {
+    return (
+      <span className="slide-panel__duration slide-panel__duration--editing" onClick={(e) => e.stopPropagation()}>
+        <input
+          ref={inputRef}
+          type="number"
+          min={0.1}
+          step={unit === 'bars' ? 1 : 0.5}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
+          className="slide-panel__duration-input"
+          autoFocus
+        />
+        <span>{unitLabel}</span>
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="slide-panel__duration slide-panel__duration--btn"
+      onClick={startEdit}
+      title="Click to edit duration"
+    >
+      {describeDuration(slide.duration)}
+    </button>
+  );
+}
+
 export function SlidePanel({
   deck,
   loading,
   error,
   selectedSlideId,
   onUpdate,
+  onUpdateSlide,
   onAddSlide,
   onAddImageSlide,
   onAddVideoSlide,
@@ -118,8 +185,10 @@ export function SlidePanel({
                     <span className="slide-panel__num">{num}</span>
                     <SlideThumbnail slide={slide} />
                     <span className="slide-panel__type">{slide.type}</span>
-                    <span className="slide-panel__duration">{describeDuration(slide.duration)}</span>
                   </button>
+                  {onUpdateSlide && slide.duration && (
+                    <DurationField slide={slide} onUpdateSlide={onUpdateSlide} />
+                  )}
                   <button
                     type="button"
                     className="slide-panel__delete"
