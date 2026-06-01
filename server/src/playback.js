@@ -112,6 +112,7 @@ export function createPlaybackController({
       const delay = linkBridge.msUntilNextBar();
       if (Number.isFinite(delay) && delay > 0) {
         state = { state: 'pending', deckId: deck.id };
+        broadcast({ type: 'playback:pending', deckId: deck.id });
         pendingTimer = setTimeout(() => {
           pendingTimer = null;
           if (state.state !== 'pending' || state.deckId !== deck.id) return;

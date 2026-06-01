@@ -352,12 +352,19 @@ describe('Ableton Link timing', () => {
     deck = await deckStore.getDeck(d.id);
 
     await controller.start(deck.id);
-    // Should not have broadcast yet — we're waiting for the bar boundary
-    expect(broadcast).not.toHaveBeenCalled();
+    // Should have broadcast playback:pending immediately, but not playback:start yet
+    expect(broadcast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'playback:pending', deckId: deck.id }),
+    );
+    expect(broadcast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'playback:start' }),
+    );
     expect(controller.getState().state).toBe('pending');
 
     await vi.advanceTimersByTimeAsync(749);
-    expect(broadcast).not.toHaveBeenCalled();
+    expect(broadcast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'playback:start' }),
+    );
 
     await vi.advanceTimersByTimeAsync(2);
     expect(broadcast).toHaveBeenCalledWith(

@@ -26,6 +26,13 @@ export function usePlayback() {
 
   const handleMessage = useCallback((msg) => {
     switch (msg?.type) {
+      case 'playback:pending':
+        setState((prev) => ({
+          state: 'pending',
+          deckId: msg.deckId,
+          ...(prev.linkBpm != null ? { linkBpm: prev.linkBpm } : {}),
+        }));
+        break;
       case 'playback:start':
         setState((prev) => {
           // Carry linkBpm forward — it persists across slide advances. Prefer

@@ -178,6 +178,18 @@ ul {
   background: #4a5af0;
 }
 
+.top-bar__play--pending {
+  background: #d97706;
+  border-color: #d97706;
+  color: white;
+  cursor: pointer;
+}
+
+.top-bar__play--pending:hover {
+  background: #b45309;
+  border-color: #b45309;
+}
+
 .top-bar__stop {
   background: var(--danger);
   color: white;

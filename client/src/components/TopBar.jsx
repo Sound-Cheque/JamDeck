@@ -19,6 +19,7 @@ export function TopBar({
   onSettings,
 }) {
   const isPlaying = playbackState?.state === 'playing';
+  const isPending = playbackState?.state === 'pending';
   const canPlay = !!deck && deck.slides?.length > 0;
   const loopOn = !!deck?.settings?.loop;
 
@@ -29,7 +30,7 @@ export function TopBar({
       if (isTypingTarget(event.target)) return;
       if (!deck) return;
 
-      if (isPlaying) {
+      if (isPlaying || isPending) {
         event.preventDefault();
         onStop?.();
       } else if (canPlay) {
@@ -39,7 +40,7 @@ export function TopBar({
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [deck, isPlaying, canPlay, onStart, onStop]);
+  }, [deck, isPlaying, isPending, canPlay, onStart, onStop]);
 
   return (
     <header className="top-bar">
@@ -53,6 +54,15 @@ export function TopBar({
             onClick={() => onStop?.()}
           >
             ■ Stop
+          </button>
+        ) : isPending ? (
+          <button
+            type="button"
+            className="top-bar__play top-bar__play--pending"
+            aria-label="Waiting for next bar — click to cancel"
+            onClick={() => onStop?.()}
+          >
+            ◌ Waiting…
           </button>
         ) : (
           <button
