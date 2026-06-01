@@ -162,10 +162,10 @@ Features that can't be meaningfully exercised in vitest: native DAW integration,
 - [x] Server log shows `Ableton Link enabled (tempo=120)` on boot (set `JAM_DECK_LINK=0` to opt out)
 - [x] Create a bars-mode deck, start playback in Link timing — slide advances after the correct number of bars at the DAW's current tempo
 - [x] Change tempo in the DAW mid-slide — remaining time adjusts; slide still advances at the right moment under the new tempo
-- [ ] Hit Play in JamDeck → DAW transport starts
-- [ ] Hit Stop in JamDeck → DAW transport stops
-- [ ] Hit Play in the DAW → JamDeck shows a brief "pending" state, then `playback:start` fires on the next bar boundary
-- [ ] Hit Stop in the DAW → JamDeck stops
+- [x] Hit Play in JamDeck → DAW transport starts
+- [x] Hit Stop in JamDeck → DAW transport stops
+- [x] Hit Play in the DAW → JamDeck shows a brief "pending" state, then `playback:start` fires on the next bar boundary
+- [x] Hit Stop in the DAW → JamDeck stops
 
 ### Ngrok / Mobile Sharing _(requires `NGROK_AUTHTOKEN` env var)_
 - [ ] 📱 Share button in TopBar → QR code modal appears with correct ngrok URL
