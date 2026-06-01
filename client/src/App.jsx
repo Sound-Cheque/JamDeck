@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DeckPanel } from './components/DeckPanel.jsx';
 import { SlidePanel } from './components/SlidePanel.jsx';
 import { SlideEditor } from './components/SlideEditor.jsx';
@@ -15,10 +15,45 @@ import { useShare } from './hooks/useShare.js';
 import { useAppSettings } from './hooks/useAppSettings.js';
 import { createTonePlayer } from './utils/audio.js';
 
+function useColumnResize(initialWidth) {
+  const [width, setWidth] = useState(initialWidth);
+  const widthRef = useRef(initialWidth);
+
+  const startResize = useCallback((e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = widthRef.current;
+
+    const onMove = (e) => {
+      const next = Math.max(140, startW + (e.clientX - startX));
+      widthRef.current = next;
+      setWidth(next);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, []);
+
+  useEffect(() => {
+    widthRef.current = width;
+  }, [width]);
+
+  return [width, startResize];
+}
+
 export function App() {
   const decksState = useDecks();
   const [selectedDeckId, setSelectedDeckId] = useState(null);
   const [selectedSlideId, setSelectedSlideId] = useState(null);
+  const [deckWidth, startDeckResize] = useColumnResize(260);
+  const [slideWidth, startSlideResize] = useColumnResize(300);
   const [shareOpen, setShareOpen] = useState(false);
   const [appSettingsOpen, setAppSettingsOpen] = useState(false);
   const deckState = useDeck(selectedDeckId);
@@ -169,68 +204,71 @@ export function App() {
         onStop={() => shareState.stop()}
       />
       <main className="layout">
-        <DeckPanel
-          decks={decksState.decks}
-          loading={decksState.loading}
-          error={decksState.error}
-          selectedDeckId={selectedDeckId}
-          onSelect={setSelectedDeckId}
-          onCreate={decksState.createDeck}
-          onDelete={(id) => {
-            decksState.deleteDeck(id);
-            if (id === selectedDeckId) setSelectedDeckId(null);
-          }}
-          onToggleFavorite={decksState.toggleFavorite}
-        />
-        <SlidePanel
-          deck={deckState.deck}
-          loading={deckState.loading}
-          error={deckState.error}
-          selectedSlideId={selectedSlideId}
-          onUpdate={async (patch) => {
-            const updated = await deckState.update(patch);
-            // Keep the deck-list summary in sync with name/favorite/timestamp
-            // changes from this PATCH.
-            await decksState.refresh();
-            return updated;
-          }}
-          onAddSlide={async () => {
-            const updated = await deckState.addSlide();
-            // Auto-select the newly added slide for fast iteration.
-            const last = updated.slides[updated.slides.length - 1];
-            if (last) setSelectedSlideId(last.id);
-            await decksState.refresh();
-          }}
-          onAddImageSlide={async () => {
-            const updated = await deckState.addSlide({
-              type: 'image',
-              content: { src: null },
-            });
-            const last = updated.slides[updated.slides.length - 1];
-            if (last) setSelectedSlideId(last.id);
-            await decksState.refresh();
-          }}
-          onAddVideoSlide={async () => {
-            const updated = await deckState.addSlide({
-              type: 'video',
-              content: { src: null },
-            });
-            const last = updated.slides[updated.slides.length - 1];
-            if (last) setSelectedSlideId(last.id);
-            await decksState.refresh();
-          }}
-          onDeleteSlide={async (slideId) => {
-            await deckState.deleteSlide(slideId);
-            if (slideId === selectedSlideId) setSelectedSlideId(null);
-            await decksState.refresh();
-          }}
-          onSelectSlide={setSelectedSlideId}
-          onReorderSlides={async (orderIds) => {
-            await deckState.reorderSlides(orderIds);
-            await decksState.refresh();
-          }}
-        />
-        <section className="main-panel" aria-label="Slide editor">
+        <div className="layout__col" style={{ width: deckWidth }}>
+          <DeckPanel
+            decks={decksState.decks}
+            loading={decksState.loading}
+            error={decksState.error}
+            selectedDeckId={selectedDeckId}
+            onSelect={setSelectedDeckId}
+            onCreate={decksState.createDeck}
+            onDelete={(id) => {
+              decksState.deleteDeck(id);
+              if (id === selectedDeckId) setSelectedDeckId(null);
+            }}
+            onToggleFavorite={decksState.toggleFavorite}
+          />
+          <div className="resize-handle" onMouseDown={startDeckResize} aria-hidden="true" />
+        </div>
+        <div className="layout__col" style={{ width: slideWidth }}>
+          <SlidePanel
+            deck={deckState.deck}
+            loading={deckState.loading}
+            error={deckState.error}
+            selectedSlideId={selectedSlideId}
+            onUpdate={async (patch) => {
+              const updated = await deckState.update(patch);
+              await decksState.refresh();
+              return updated;
+            }}
+            onAddSlide={async () => {
+              const updated = await deckState.addSlide();
+              const last = updated.slides[updated.slides.length - 1];
+              if (last) setSelectedSlideId(last.id);
+              await decksState.refresh();
+            }}
+            onAddImageSlide={async () => {
+              const updated = await deckState.addSlide({
+                type: 'image',
+                content: { src: null },
+              });
+              const last = updated.slides[updated.slides.length - 1];
+              if (last) setSelectedSlideId(last.id);
+              await decksState.refresh();
+            }}
+            onAddVideoSlide={async () => {
+              const updated = await deckState.addSlide({
+                type: 'video',
+                content: { src: null },
+              });
+              const last = updated.slides[updated.slides.length - 1];
+              if (last) setSelectedSlideId(last.id);
+              await decksState.refresh();
+            }}
+            onDeleteSlide={async (slideId) => {
+              await deckState.deleteSlide(slideId);
+              if (slideId === selectedSlideId) setSelectedSlideId(null);
+              await decksState.refresh();
+            }}
+            onSelectSlide={setSelectedSlideId}
+            onReorderSlides={async (orderIds) => {
+              await deckState.reorderSlides(orderIds);
+              await decksState.refresh();
+            }}
+          />
+          <div className="resize-handle" onMouseDown={startSlideResize} aria-hidden="true" />
+        </div>
+        <section className="layout__col layout__col--last main-panel" aria-label="Slide editor">
           {isPlayingLoadedDeck ? (
             <PlaybackView deck={deckState.deck} playback={playbackState.state} />
           ) : (

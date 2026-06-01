@@ -191,21 +191,51 @@ ul {
 }
 
 .layout {
-  display: grid;
-  grid-template-columns: 240px 300px 1fr;
+  display: flex;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.layout > * {
-  border-right: 1px solid var(--border);
+.layout__col {
+  position: relative;
+  flex: 0 0 auto;
   overflow: auto;
   background: var(--panel);
+  border-right: 1px solid var(--border);
+  min-width: 140px;
 }
 
-.layout > :last-child {
+.layout__col--last {
+  flex: 1 1 auto;
+  min-width: 200px;
   border-right: 0;
   background: var(--panel-muted);
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.resize-handle:hover::after {
+  background: var(--accent);
+  opacity: 0.5;
 }
 
 /* ─── Deck panel (left) ──────────────────────────────────────────────────── */
