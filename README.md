@@ -1,4 +1,4 @@
-# Jam Deck
+# JamDeck
 
 Local web app for designing and running improvisational exercises for group music sessions. Slide-deck style: each slide has instructions, drawings, image, or video with configurable timing. Musicians follow along on a projected display; phones in the room can edit the deck in real time.
 
