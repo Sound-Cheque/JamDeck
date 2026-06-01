@@ -156,7 +156,7 @@ Features that can't be meaningfully exercised in vitest: native DAW integration,
 ### Boot & Basic Sanity
 - [x] `npm run dev` starts cleanly — server on :4000, client on :5173, no native-addon errors in the log
 - [x] 3-panel host UI loads in the browser
-- [ ] Create a deck, add a canvas slide + image slide + video slide, reload page — all slides persist with correct content
+- [x] Create a deck, add a canvas slide + image slide + video slide, reload page — all slides persist with correct content
 
 ### Ableton Link _(requires a Link-enabled app: Ableton Live, Reason, LinkHut, etc.)_
 - [ ] Server log shows `Ableton Link enabled (tempo=120)` on boot (set `JAM_DECK_LINK=0` to opt out)
@@ -199,7 +199,7 @@ Features that can't be meaningfully exercised in vitest: native DAW integration,
 - [ ] Close and reopen the browser tab → chosen theme persists (localStorage)
 
 ### Canvas & Media
-- [ ] Draw freehand strokes on a canvas slide → strokes reload identically after page refresh
+- [x] Draw freehand strokes on a canvas slide → strokes reload identically after page refresh
 - [ ] Use all shape tools — Rect, Circle, Line, Arrow, Triangle, Text — each persists and reloads correctly
 - [ ] Upload the same image file twice → deduplication works (no duplicate stored on disk)
 - [ ] Video slide: plays back automatically (muted) during playback; thumbnail shows first frame in the slide panel
