@@ -47,6 +47,10 @@ export function createShareController({ tunnelFactory, port = 4000 } = {}) {
 // Default tunnelFactory used in production. Lazy-imports `@ngrok/ngrok` so
 // `share.js` is safe to import without the package installed.
 export async function defaultNgrokTunnelFactory(opts) {
+  const authtoken = process.env.NGROK_AUTHTOKEN;
+  if (!authtoken) {
+    throw new Error('NGROK_AUTHTOKEN is not set — add it to .env');
+  }
   const mod = await import('@ngrok/ngrok');
   // `forward` is the recommended entrypoint for newer @ngrok/ngrok; it
   // returns a Listener with .url() and .close().
@@ -54,5 +58,5 @@ export async function defaultNgrokTunnelFactory(opts) {
   if (typeof ngrok.forward !== 'function') {
     throw new Error('@ngrok/ngrok does not expose forward()');
   }
-  return ngrok.forward(opts);
+  return ngrok.forward({ ...opts, authtoken });
 }
