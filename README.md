@@ -39,9 +39,43 @@ Open <http://localhost:5173>.
 
 ### Optional environment
 
+- `PORT` — HTTP server port. Defaults to `4000`.
 - `JAM_DECK_DATA_DIR` — override the on-disk data directory. Defaults to `./data` at the project root.
 - `JAM_DECK_LINK=0` — skip the Ableton Link native addon at boot. Useful for CI or when debugging Link issues.
 - `NGROK_AUTHTOKEN` — required for the 📱 Share button (phones-on-other-networks). The host stays usable without it; the share modal will surface the auth error if you click Start without a token.
+
+You can put these in a `.env` file at the project root (it is gitignored):
+
+```sh
+NGROK_AUTHTOKEN=your_token_here
+JAM_DECK_DATA_DIR=/workspace/data
+```
+
+### Dev container
+
+The app runs in a dev container, but two optional features have constraints.
+
+**Ngrok — works.** The tunnel is established as an outbound connection from inside the container, so no special networking is needed. You must forward `NGROK_AUTHTOKEN` into the container. In `.devcontainer/devcontainer.json`:
+
+```json
+"remoteEnv": {
+  "NGROK_AUTHTOKEN": "${localEnv:NGROK_AUTHTOKEN}"
+}
+```
+
+This reads the token from your host shell and makes it available inside the container session. The Share button works normally once the token is present.
+
+**Ableton Link — does not work on macOS.** Link discovers peers using UDP multicast on port 20808 across the local network. Docker Desktop on macOS runs containers inside a Linux VM with its own network namespace. Neither the default bridge network nor `--network host` lets multicast traffic reach Ableton Live running on the Mac. The `abletonlink` addon loads without crashing and the app remains fully functional, but the peer count will always be 0 and tempo/transport sync will not work.
+
+On a **Linux** host, `--network host` maps to the real network interface and Link works normally.
+
+If you need to test Link or run the project natively on macOS, use nvm and run outside a container:
+
+```sh
+nvm use        # picks up Node 25.9.0 from .nvmrc
+npm install
+npm run dev
+```
 
 ### Modes (URL-driven)
 
