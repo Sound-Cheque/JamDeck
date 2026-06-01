@@ -67,6 +67,7 @@ export function createDeckRouter(deckStore, broadcast = () => {}, playbackContro
       const deck = await deckStore.updateDeck(req.params.id, req.body ?? {});
       res.json(deck);
       broadcast({ type: 'deck:update', deck });
+      playbackController?.notifyDeckUpdate?.(deck);
     } catch (err) {
       next(err);
     }

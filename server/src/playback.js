@@ -272,5 +272,16 @@ export function createPlaybackController({
     slideBarsLeft = null;
   }
 
-  return { getState, getActiveSlideId, start, stop };
+  // Called by the deck router when a deck PATCH succeeds. Keeps activeDeck in
+  // sync so settings changes (e.g. loop toggle) take effect mid-playback without
+  // requiring a stop/start cycle.
+  function notifyDeckUpdate(updatedDeck) {
+    if (!activeDeck || activeDeck.id !== updatedDeck.id) return;
+    activeDeck = { ...activeDeck, settings: { ...updatedDeck.settings } };
+    if (state.state === 'playing' || state.state === 'pending') {
+      state = { ...state, loop: !!activeDeck.settings.loop };
+    }
+  }
+
+  return { getState, getActiveSlideId, start, stop, notifyDeckUpdate };
 }
