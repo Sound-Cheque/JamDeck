@@ -149,6 +149,79 @@ Spec §"Phase 6 — Polish"
 
 ---
 
+## Phase 7 — Manual Smoke Tests
+
+Features that can't be meaningfully exercised in vitest: native DAW integration, live ngrok tunnels, real-device touch, browser Fullscreen API, and `prefers-color-scheme` rendering. Work through this checklist before declaring any release ready. Mark items `[x]` as each passes.
+
+### Boot & Basic Sanity
+- [ ] `npm run dev` starts cleanly — server on :4000, client on :5173, no native-addon errors in the log
+- [ ] 3-panel host UI loads in the browser
+- [ ] Create a deck, add a canvas slide + image slide + video slide, reload page — all slides persist with correct content
+
+### Ableton Link _(requires a Link-enabled app: Ableton Live, Reason, LinkHut, etc.)_
+- [ ] Server log shows `Ableton Link enabled (tempo=120)` on boot (set `JAM_DECK_LINK=0` to opt out)
+- [ ] Create a bars-mode deck, start playback in Link timing — slide advances after the correct number of bars at the DAW's current tempo
+- [ ] Change tempo in the DAW mid-slide — remaining time adjusts; slide still advances at the right moment under the new tempo
+- [ ] Hit Play in JamDeck → DAW transport starts
+- [ ] Hit Stop in JamDeck → DAW transport stops
+- [ ] Hit Play in the DAW → JamDeck shows a brief "pending" state, then `playback:start` fires on the next bar boundary
+- [ ] Hit Stop in the DAW → JamDeck stops
+
+### Ngrok / Mobile Sharing _(requires `NGROK_AUTHTOKEN` env var)_
+- [ ] 📱 Share button in TopBar → QR code modal appears with correct ngrok URL
+- [ ] Scan QR on a phone (or open URL in mobile browser) → Mobile UI loads, slide list visible with thumbnails
+- [ ] Edit a non-playing slide on the phone → change appears in the host browser tab
+- [ ] Start playback on the host → phone's active-slide indicator updates to the current slide
+- [ ] Try to edit the currently-playing slide on the phone → action rejected (slide locked)
+- [ ] Stop playback → formerly-playing slide is editable again on the phone
+- [ ] Click Stop Sharing → tunnel closes, Share button resets to its idle state
+
+### Multi-Client Real-Time Sync _(two browser tabs, no phone needed)_
+- [ ] Create a slide in Tab 1 → appears in Tab 2 without a manual refresh
+- [ ] Edit a slide in Tab 1 → Tab 2 reflects the change
+- [ ] Start playback in Tab 1 → both tabs show the playback view simultaneously
+- [ ] Delete a deck in Tab 1 → Tab 2 reflects the deletion
+
+### Fullscreen & Second-Window Playback _(ideally two monitors)_
+- [ ] AppSettings → "Current Window": ⛶ button triggers browser fullscreen; Escape exits
+- [ ] AppSettings → "Second Window": ⛶ button opens `/?playback=1` in a new window with output-only view (no editor chrome)
+- [ ] Start playback on the host → second window advances slides in real time
+
+### Mobile UI _(real phone or narrow viewport at `?mobile=1`)_
+- [ ] Tap a slide row → full-screen MobileSlideEditor opens
+- [ ] Adjust duration and tap Send → change persists on the host
+- [ ] Swap image on an image slide → host shows the updated image
+- [ ] 🔒 icon on the playing slide → tapping it gives no edit access
+
+### Dark Mode & Theming
+- [ ] AppSettings theme toggle: Light renders white background, Dark renders dark background, Auto follows the OS setting
+- [ ] Set macOS Appearance to Dark → Auto mode switches the app to dark
+- [ ] Close and reopen the browser tab → chosen theme persists (localStorage)
+
+### Canvas & Media
+- [ ] Draw freehand strokes on a canvas slide → strokes reload identically after page refresh
+- [ ] Use all shape tools — Rect, Circle, Line, Arrow, Triangle, Text — each persists and reloads correctly
+- [ ] Upload the same image file twice → deduplication works (no duplicate stored on disk)
+- [ ] Video slide: plays back automatically (muted) during playback; thumbnail shows first frame in the slide panel
+
+### Playback Timers & Controls
+- [ ] Background Fill: bar shrinks from right to left over the slide duration
+- [ ] Shrinking Ball: ball scales down to nothing at the end of the slide
+- [ ] Countdown overlay: with `countdownSeconds` set, numeric countdown appears in the final N seconds
+- [ ] Loop: playback wraps back to slide 0 after the last slide
+- [ ] Spacebar plays and stops; spacebar is ignored when an input or textarea is focused
+
+### Internal Clock Metronome
+- [ ] At BPM 120, internal timing: hear 880 Hz accent on beat 1 and 440 Hz on beats 2–4
+- [ ] Upload a custom accent sound in DeckSettings → custom sound plays on beat 1
+- [ ] Upload a custom beat sound → custom sound plays on beats 2–4
+- [ ] Click Reset on each sound → built-in sine tones return
+
+### Drag-to-Reorder Slides
+- [ ] Drag a slide to a new position in SlidePanel → order updates visually and persists after reload
+
+---
+
 ## Open questions / decisions to make
 
 - [x] ~~Which Ableton Link npm package — confirm `abletonlink` builds on current Node/macOS, fallback plan if not.~~ **Decision:** `abletonlink@0.2.0-beta.0` works on Node 25 / macOS arm64. Yellow flag: `libc++abi: terminating` on process exit, harmless during operation. Opt-out via `JAM_DECK_LINK=0` if it ever causes trouble.
