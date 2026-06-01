@@ -168,7 +168,7 @@ Features that can't be meaningfully exercised in vitest: native DAW integration,
 - [x] Hit Stop in the DAW → JamDeck stops
 
 ### Ngrok / Mobile Sharing _(requires `NGROK_AUTHTOKEN` env var)_
-- [ ] 📱 Share button in TopBar → QR code modal appears with correct ngrok URL
+- [x] 📱 Share button in TopBar → QR code modal appears with correct ngrok URL
 - [ ] Scan QR on a phone (or open URL in mobile browser) → Mobile UI loads, slide list visible with thumbnails
 - [ ] Edit a non-playing slide on the phone → change appears in the host browser tab
 - [ ] Start playback on the host → phone's active-slide indicator updates to the current slide
