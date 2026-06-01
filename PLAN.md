@@ -159,7 +159,7 @@ Features that can't be meaningfully exercised in vitest: native DAW integration,
 - [x] Create a deck, add a canvas slide + image slide + video slide, reload page — all slides persist with correct content
 
 ### Ableton Link _(requires a Link-enabled app: Ableton Live, Reason, LinkHut, etc.)_
-- [ ] Server log shows `Ableton Link enabled (tempo=120)` on boot (set `JAM_DECK_LINK=0` to opt out)
+- [x] Server log shows `Ableton Link enabled (tempo=120)` on boot (set `JAM_DECK_LINK=0` to opt out)
 - [ ] Create a bars-mode deck, start playback in Link timing — slide advances after the correct number of bars at the DAW's current tempo
 - [ ] Change tempo in the DAW mid-slide — remaining time adjusts; slide still advances at the right moment under the new tempo
 - [ ] Hit Play in JamDeck → DAW transport starts
