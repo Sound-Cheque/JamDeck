@@ -169,7 +169,7 @@ Features that can't be meaningfully exercised in vitest: native DAW integration,
 
 ### Ngrok / Mobile Sharing _(requires `NGROK_AUTHTOKEN` env var)_
 - [x] 📱 Share button in TopBar → QR code modal appears with correct ngrok URL
-- [ ] Scan QR on a phone (or open URL in mobile browser) → Mobile UI loads, slide list visible with thumbnails
+- [x] Scan QR on a phone (or open URL in mobile browser) → Mobile UI loads, slide list visible with thumbnails
 - [ ] Edit a non-playing slide on the phone → change appears in the host browser tab
 - [ ] Start playback on the host → phone's active-slide indicator updates to the current slide
 - [ ] Try to edit the currently-playing slide on the phone → action rejected (slide locked)

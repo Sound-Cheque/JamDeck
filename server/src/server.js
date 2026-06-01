@@ -1,5 +1,8 @@
 import express from 'express';
 import http from 'node:http';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createDeckStore } from './decks.js';
 import { createDeckRouter } from './decks.routes.js';
@@ -8,6 +11,9 @@ import { createMediaRouter } from './media.routes.js';
 import { createPlaybackController } from './playback.js';
 import { createPlaybackRouter } from './playback.routes.js';
 import { createShareRouter } from './share.routes.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const CLIENT_DIST = join(__dirname, '../../client/dist');
 
 const WS_OPEN = 1; // ws library readyState constant
 
@@ -70,6 +76,17 @@ export function createServer({
     app.use('/api/share', createShareRouter(shareController));
   }
   app.use('/media', express.static(resolvedMediaDir));
+  // Explicit 404 for missing media files — must come before the SPA catch-all
+  // so unknown /media paths aren't silently served index.html.
+  app.use('/media', (_req, res) => res.status(404).json({ error: 'Not found' }));
+
+  // Serve the built client bundle when present (production / ngrok share mode).
+  // In dev the Vite server handles this; in CI or tests CLIENT_DIST won't exist
+  // so we skip it. Must come after all /api routes so the API wins.
+  if (existsSync(CLIENT_DIST)) {
+    app.use(express.static(CLIENT_DIST));
+    app.get('/{*path}', (_req, res) => res.sendFile(join(CLIENT_DIST, 'index.html')));
+  }
 
   return {
     app,
